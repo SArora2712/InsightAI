@@ -1,0 +1,6 @@
+venv/
+.env
+data/qdrant_local/
+data/bm25_index.json
+__pycache__/
+*.pyc
