@@ -64,9 +64,6 @@ def setup_resources():
             "Please add your internal documents before starting InsightAI."
         )
 
-    # --------------------------------------------------------
-    # 2. Chunk documents
-    # --------------------------------------------------------
 
     all_chunks = []
 
@@ -86,9 +83,6 @@ def setup_resources():
 
     texts = [chunk.text for chunk in all_chunks]
 
-    # --------------------------------------------------------
-    # 3. Dense embeddings
-    # --------------------------------------------------------
 
     provider = get_provider()
 
@@ -96,9 +90,6 @@ def setup_resources():
 
     dense_vectors = provider.embed_texts(texts)
 
-    # --------------------------------------------------------
-    # 4. Sparse BM25 index
-    # --------------------------------------------------------
 
     bm25 = BM25Index()
 
@@ -109,9 +100,6 @@ def setup_resources():
         for text in texts
     ]
 
-    # --------------------------------------------------------
-    # 5. Qdrant vector store
-    # --------------------------------------------------------
 
     client = get_client()
 
@@ -124,9 +112,6 @@ def setup_resources():
         sparse_vectors,
     )
 
-    # --------------------------------------------------------
-    # 6. Build Workflow mode
-    # --------------------------------------------------------
 
     workflow_app = build_orchestrator_graph(
         bm25,
@@ -134,9 +119,6 @@ def setup_resources():
         client,
     )
 
-    # --------------------------------------------------------
-    # 7. Build Agent mode tools
-    # --------------------------------------------------------
 
     agent_tools = build_agent_tools(
         bm25,
@@ -156,9 +138,6 @@ def setup_resources():
     )
 
 
-# ============================================================
-# AGENT RESULT NORMALIZATION
-# ============================================================
 
 def extract_agent_results(tool_calls_made: list[dict]):
     """
@@ -294,14 +273,6 @@ def run_agent_query(prompt: str, agent_tools):
         0,
     )
 
-    # --------------------------------------------------------
-    # Default values
-    #
-    # Important:
-    # These MUST be initialized before the if/else block.
-    # Otherwise, no-tool queries can cause:
-    # UnboundLocalError
-    # --------------------------------------------------------
 
     rag_result = None
     sql_result = None
@@ -312,104 +283,29 @@ def run_agent_query(prompt: str, agent_tools):
         "conflict_summary": None,
     }
 
-    confidence = {
-        "score": 1.0,
-        "label": "High",
-        "reasons": [
-            "No tools needed — direct response."
-        ],
-    }
-
-    critique = {
-        "has_issues": False,
-        "severity": "none",
-        "findings": [],
-        "verdict": "No critique required.",
-    }
-
-    # --------------------------------------------------------
-    # If Agent used tools
-    # --------------------------------------------------------
-
-    if tool_calls_made:
-
-        (
-            rag_result,
-            sql_result,
-            web_result,
-        ) = extract_agent_results(
-            tool_calls_made
-        )
-
-        # ----------------------------------------------------
-        # Detect conflicts between sources
-        # ----------------------------------------------------
-
-        conflict = detect_conflict(
-            rag_result,
-            sql_result,
-            web_result,
-        )
-
-        # ----------------------------------------------------
-        # Compute confidence
-        # ----------------------------------------------------
-
-        confidence = compute_confidence(
-            conflict["conflict_detected"],
-            rag_result,
-            sql_result,
-            web_result,
-        )
-
-        # ----------------------------------------------------
-        # Critique final answer
-        # ----------------------------------------------------
-
-        critique = critique_answer(
-            prompt,
-            answer,
-            rag_result,
-            sql_result,
-            web_result,
-        )
-
-    # --------------------------------------------------------
-    # Build common metadata
-    # --------------------------------------------------------
+    if iterations == 0:
+        # Genuine out-of-scope decline (returned before the loop even started) - High confidence is correct here
+        confidence = {"score": 1.0, "label": "High", "reasons": ["Correctly declined — out of scope."]}
+        critique = {"has_issues": False, "severity": "none", "findings": [], "verdict": "N/A — out of scope"}
+    elif not tool_calls_made:
+       
+        confidence = {"score": 0.1, "label": "Low", "reasons": ["No tool was called despite the question being in-scope — answer is not grounded in any source."]}
+        critique = {"has_issues": True, "severity": "severe", "findings": ["No tool results back this answer."], "verdict": "Answer is ungrounded."}
+    else:
+        rag_result, sql_result, web_result = extract_agent_results(tool_calls_made)
+        conflict = detect_conflict(rag_result, sql_result, web_result)
+        confidence = compute_confidence(conflict["conflict_detected"], rag_result, sql_result, web_result)
+        critique = critique_answer(prompt, answer, rag_result, sql_result, web_result)
 
     meta = {
-        "mode": "Agent (v2)",
-        "tool_trace": tool_calls_made,
-        "iterations": iterations,
-
-        "conflict_detected": conflict.get(
-            "conflict_detected",
-            False,
-        ),
-
-        "conflict_summary": conflict.get(
-            "conflict_summary",
-        ),
-
-        "confidence": confidence,
-
-        "critique": critique,
-
-        "web_sources": (
-            web_result or {}
-        ).get(
-            "sources",
-            [],
-        ),
+        "mode": "Agent (v2)", "tool_trace": tool_calls_made, "iterations": iterations,
+        "conflict_detected": conflict.get("conflict_detected", False),
+        "conflict_summary": conflict.get("conflict_summary"),
+        "confidence": confidence, "critique": critique,
+        "web_sources": (web_result or {}).get("sources", []),
     }
 
     return answer, meta
-
-
-# ============================================================
-# UI HELPERS
-# ============================================================
 
 def safe_markdown(text: str):
     """

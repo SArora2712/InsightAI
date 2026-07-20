@@ -83,7 +83,8 @@ def run_agentic_query(question: str, tool_dispatch: dict, max_iterations: int = 
     tool_calls_made = []
 
     for iteration in range(1, max_iterations + 1):
-        message = call_llm_with_tools(AGENT_SYSTEM_PROMPT, messages, TOOLS_SCHEMA)
+        choice = "required" if iteration == 1 else "auto"
+        message = call_llm_with_tools(AGENT_SYSTEM_PROMPT, messages, TOOLS_SCHEMA, tool_choice=choice)
 
         if message is None:
             fallback_answer = call_llm(
