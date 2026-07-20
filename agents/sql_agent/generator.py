@@ -9,9 +9,9 @@ from pathlib import Path
 from core.llm_client import call_llm
 
 from agents.sql_agent.schema_linker import SchemaLinker
-from validator import validate_sql, SQLValidationError
-from prompts import build_sql_system_prompt, build_sql_prompt, build_retry_prompt
-from executor import execute_sql, get_max_order_date, SQLExecutionError
+from agents.sql_agent.validator import validate_sql, SQLValidationError
+from agents.sql_agent.prompts import build_sql_system_prompt, build_sql_prompt, build_retry_prompt
+from agents.sql_agent.executor import execute_sql, get_max_order_date, SQLExecutionError
 
 MAX_RETRIES = 2
 
