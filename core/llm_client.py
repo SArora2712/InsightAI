@@ -67,7 +67,7 @@ def call_llm_with_tools(system_prompt: str, messages: list[dict], tools: list[di
         response = client.chat.completions.create(
             model=model, temperature=0,
             messages=[{"role": "system", "content": system_prompt}] + messages,
-            tools=tools, tool_choice="auto",
+            tools=tools, tool_choice="tool_choice",
         )
         return response.choices[0].message
     except openai.BadRequestError as e:
