@@ -1,17 +1,6 @@
 """
 InsightAI - Agentic loop (ReAct pattern).
 
-Unlike the Router/Workflow orchestrator (agents/orchestrator/graph.py), the
-control flow here is NOT fixed in advance. The LLM itself decides, one step
-at a time, which tool to call - and after seeing each tool's actual result,
-decides its NEXT action: answer now, call a different tool, or retry the
-same tool with a refined question. This is the "Agent" quadrant: the LLM
-directs its own actions based on environmental feedback, rather than
-following a pre-drawn graph.
-
-Kept alongside (not replacing) the Workflow version - the fixed-routing
-graph is faster, cheaper, and more predictable for well-understood question
-types; this loop trades some of that for genuine adaptivity.
 """
 import json
 
@@ -26,8 +15,6 @@ MAX_ITERATIONS = 5
 
 AGENT_SYSTEM_PROMPT = """You are InsightAI, a business analyst assistant
 specialized in Northwind Traders.
-
-...(existing prompt content unchanged)...
 
 Once sufficient information has been gathered, provide a concise final answer
 in plain text.

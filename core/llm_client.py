@@ -57,34 +57,76 @@ def call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.0, max
     return response.choices[0].message.content
 
 
-
-def call_llm_with_tools(system_prompt: str, messages: list[dict], tools: list[dict]):
+def call_llm_with_tools(
+    system_prompt: str,
+    messages: list[dict],
+    tools: list[dict],
+    tool_choice: str = "auto",
+):
     client, model = _get_client()
+
     if client is None:
         return None
 
     try:
         response = client.chat.completions.create(
-            model=model, temperature=0,
-            messages=[{"role": "system", "content": system_prompt}] + messages,
-            tools=tools, tool_choice="tool_choice",
+            model=model,
+            temperature=0,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                }
+            ] + messages,
+            tools=tools,
+            tool_choice=tool_choice,
         )
+
         return response.choices[0].message
+
     except openai.BadRequestError as e:
-        
-        print(f"[llm_client] Tool-call generation failed, retrying once: {e}")
+
+        print(
+            f"[llm_client] Tool-call generation failed with "
+            f"tool_choice='{tool_choice}', retrying with auto: {e}"
+        )
+
         firm_system_prompt = system_prompt + (
             "\n\nIMPORTANT: When calling a tool, output ONLY the structured tool call. "
             "Do not write any reasoning text about which tool to use in the same turn - "
             "decide silently, then call exactly one tool."
         )
+
         try:
+
             response = client.chat.completions.create(
-                model=model, temperature=0,
-                messages=[{"role": "system", "content": firm_system_prompt}] + messages,
-                tools=tools, tool_choice="auto",
+                model=model,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": firm_system_prompt,
+                    }
+                ] + messages,
+                tools=tools,
+                tool_choice="auto",
             )
+
             return response.choices[0].message
+
         except openai.BadRequestError as e2:
-            print(f"[llm_client] Retry also failed: {e2}")
-            return None  # caller must handle this
+
+            print(
+                f"[llm_client] Retry also failed: {e2}"
+            )
+
+            return None
+
+    except Exception as e:
+
+        print(
+            f"[llm_client] Unexpected tool-call error: "
+            f"{type(e).__name__}: {e}"
+        )
+
+        return None
