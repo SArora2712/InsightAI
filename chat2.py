@@ -1,0 +1,420 @@
+"""
+InsightAI - Chat page (Workflow v1 / Agent v2). Page config and navigation
+are owned centrally by app.py - this file only renders when st.navigation
+routes to it.
+"""
+import streamlit as st
+
+from ingestion.parser import parse_directory
+from ingestion.chunker import chunk_document
+from ingestion.vector_store import (
+    get_client,
+    ensure_collection,
+    upsert_chunks,
+)
+from ingestion.sparse import BM25Index
+from ingestion.embeddings import get_provider
+
+from agents.orchestrator.graph import build_orchestrator_graph
+from agents.agentic.agent import build_agent_tools
+from agents.agentic.graph_loop import run_agentic_query_v2 as run_agentic_query
+
+from agents.orchestrator.confidence import compute_confidence
+from agents.orchestrator.critique import critique_answer
+from agents.orchestrator.synthesizer import detect_conflict
+from core.history import (
+    init_db, create_conversation, save_message,
+    maybe_set_title_from_first_message, list_conversations,
+    load_conversation_messages, delete_conversation,rename_conversation
+)
+from core.llm_client import llm_tracker
+from core.setup import setup_resources
+from core.theme2 import apply_theme, severity_icon, section_label
+
+DEBUG_MODE = False
+
+init_db()
+apply_theme()
+
+
+def extract_agent_results(tool_calls_made: list[dict]):
+    rag_result = None
+    sql_result = None
+    web_result = None
+    for call in tool_calls_made or []:
+        tool_name = call.get("tool")
+        tool_result = call.get("result")
+        if tool_name == "query_sales_database":
+            sql_result = tool_result
+        elif tool_name == "search_web":
+            web_result = tool_result
+        elif tool_name == "search_internal_documents":
+            rag_result = tool_result
+    return rag_result, sql_result, web_result
+
+
+def run_workflow_query(workflow_app, prompt: str):
+    llm_tracker.reset_query()
+    initial_state = {
+        "query": prompt, "agents_needed": [], "rag_result": None, "sql_result": None,
+        "web_result": None, "final_answer": None, "conflict_detected": None,
+        "conflict_summary": None, "confidence": None, "critique": None,
+    }
+    result = workflow_app.invoke(initial_state)
+    answer = result.get("final_answer")
+    if answer is None or not str(answer).strip():
+        answer = "Sorry, I couldn't generate an answer."
+    meta = {
+        "mode": "Workflow (v1)",
+        "agents_needed": result.get("agents_needed", []),
+        "conflict_detected": result.get("conflict_detected", False),
+        "conflict_summary": result.get("conflict_summary"),
+        "confidence": result.get("confidence"),
+        "critique": result.get("critique"),
+        "web_sources": (result.get("web_result") or {}).get("sources", []),
+        "is_error": False,
+    }
+    return answer, meta
+
+
+def run_agent_query(prompt: str, agent_tools):
+    result = run_agentic_query(prompt, agent_tools)
+    answer = result.get("answer")
+    if answer is None or not str(answer).strip():
+        answer = "Sorry, I couldn't generate an answer."
+
+    tool_calls_made = result.get("tool_calls_made", [])
+    iterations = result.get("iterations", 0)
+    rag_result = sql_result = web_result = None
+    conflict = {"conflict_detected": False, "conflict_summary": None}
+
+    if iterations == 0:
+        confidence = {"score": 1.0, "label": "High", "reasons": ["Correctly declined — out of scope."]}
+        critique = {"has_issues": False, "severity": "none", "findings": [], "verdict": "N/A — out of scope"}
+    elif not tool_calls_made:
+        confidence = {"score": 0.1, "label": "Low", "reasons": ["No tool was called despite the question being in-scope — answer is not grounded in any source."]}
+        critique = {"has_issues": True, "severity": "severe", "findings": ["No tool results back this answer."], "verdict": "Answer is ungrounded."}
+    else:
+        rag_result, sql_result, web_result = extract_agent_results(tool_calls_made)
+        conflict = detect_conflict(rag_result, sql_result, web_result)
+        confidence = compute_confidence(conflict["conflict_detected"], rag_result, sql_result, web_result)
+        critique = critique_answer(prompt, answer, rag_result, sql_result, web_result)
+
+    meta = {
+        "mode": "Agent (v2)", "tool_trace": tool_calls_made, "iterations": iterations,
+        "conflict_detected": conflict.get("conflict_detected", False),
+        "conflict_summary": conflict.get("conflict_summary"),
+        "confidence": confidence, "critique": critique,
+        "web_sources": (web_result or {}).get("sources", []),
+        "is_error": False,
+    }
+    return answer, meta
+
+
+def safe_markdown(text: str):
+    if not text:
+        return
+    st.markdown(text.replace("$", "\\$"))
+
+
+def render_chip_row(meta: dict):
+    """Single horizontal row of compact chips. Plain-text spans for
+    non-interactive chips; real st.popover(icon=...) for interactive ones -
+    icon= is a dedicated Streamlit parameter that reliably renders Material
+    icons, unlike typing ':material/name:' inline inside label text, which
+    is not parsed in popover/markdown labels on this version and shows as
+    literal text instead."""
+    if not meta:
+        return
+
+    plain_chips = []      # label only, rendered as a styled span
+    popover_chips = []     # (label, icon, render_fn)
+
+    if meta.get("mode"):
+        plain_chips.append(meta["mode"])
+
+    agents = meta.get("agents_needed", [])
+    if agents:
+        plain_chips.append(", ".join(agents))
+
+    tool_trace = meta.get("tool_trace", [])
+    if tool_trace:
+        iterations = meta.get("iterations", len(tool_trace))
+
+        def render_trace():
+            for i, call in enumerate(tool_trace, 1):
+                tool_name = call.get("tool", "unknown_tool")
+                args = call.get("args", {})
+                question = args.get("question", "")
+                st.markdown(f"**Step {i}: `{tool_name}`**")
+                if question:
+                    st.caption(f"Asked: {question}")
+        popover_chips.append((f"{iterations} step(s)", ":material/sync:", render_trace))
+
+    confidence = meta.get("confidence") or {}
+    if confidence.get("label"):
+        label = confidence.get("label")
+        score = confidence.get("score")
+        icon = severity_icon(label)
+
+        def render_confidence():
+            for reason in confidence.get("reasons", []):
+                st.markdown(f"- {reason}")
+        popover_chips.append((f"{icon} {label} · {score}", None, render_confidence))
+
+    critique = meta.get("critique") or {}
+    if critique.get("has_issues"):
+        severity = critique.get("severity", "unknown")
+
+        def render_critique():
+            verdict = critique.get("verdict", "")
+            if verdict:
+                st.markdown(verdict)
+            for finding in critique.get("findings", []):
+                st.markdown(f"- {finding}")
+        popover_chips.append((f"Critique: {severity}", ":material/search:", render_critique))
+
+    web_sources = meta.get("web_sources", [])
+    if web_sources:
+        def render_sources():
+            for source in web_sources:
+                title = source.get("title", "Source")
+                url = source.get("url", "#")
+                st.markdown(f"- [{title}]({url})")
+        popover_chips.append((f"{len(web_sources)} source(s)", ":material/menu_book:", render_sources))
+
+    total_chips = len(plain_chips) + len(popover_chips)
+    if total_chips == 0:
+        return
+
+    with st.container(key=f"chip_row_{id(meta)}"):
+        cols = st.columns(total_chips)
+        col_idx = 0
+
+        for label in plain_chips:
+            with cols[col_idx]:
+                st.markdown(
+                    f'<span style="font-size:12px;font-weight:500;color:#6B7280;'
+                    f'background:#F3F4F6;border-radius:999px;padding:4px 12px;'
+                    f'display:inline-block;">{label}</span>',
+                    unsafe_allow_html=True,
+                )
+            col_idx += 1
+
+        for label, icon, render_fn in popover_chips:
+            with cols[col_idx]:
+                with st.popover(label, icon=icon):
+                    render_fn()
+            col_idx += 1
+
+    if meta.get("conflict_detected"):
+        st.warning(
+            "**Conflicting data detected:** "
+            + str(meta.get("conflict_summary", "The retrieved sources disagree."))
+        )
+
+
+def render_assistant_message(answer: str, meta: dict):
+    is_error = bool((meta or {}).get("is_error"))
+
+    with st.container(border=True):
+        if is_error:
+            st.error("This response encountered an error.")
+        safe_markdown(answer)
+
+    render_chip_row(meta)
+
+
+with st.sidebar:
+
+
+    section_label("Session")
+    mode = st.radio(
+        "Mode",
+        ["Workflow (v1)", "Agent (v2)"],
+        label_visibility="collapsed",
+        help=(
+            "Workflow: a fixed router selects agents in advance.\n\n"
+            "Agent: the LLM dynamically decides which tools to use and in what order."
+        ),
+    )
+
+    with st.popover("3 sources connected", icon=":material/database:", use_container_width=True):
+        st.markdown(
+            "- Internal reports (Doc RAG)\n"
+            "- Sales database (SQL)\n"
+            "- Live web search"
+        )
+
+    st.divider()
+    section_label("History")
+
+    if st.button("New chat", use_container_width=True, icon=":material/add:"):
+        st.session_state.conversation_id = create_conversation()
+        st.session_state.messages = []
+        st.rerun()
+
+
+    conversations = list_conversations()
+    for conv in conversations:
+        is_active = conv["id"] == st.session_state.get("conversation_id")
+        row_key = f"history_row_active_{conv['id']}" if is_active else f"history_row_{conv['id']}"
+        menu_state_key = f"history_menu_{conv['id']}"
+
+        with st.container(key=row_key):
+            col_open, col_menu = st.columns([7, 1])
+            with col_open:
+                if st.button(conv["title"], key=f"conv_{conv['id']}", use_container_width=True):
+                    st.session_state.conversation_id = conv["id"]
+                    st.session_state.messages = load_conversation_messages(conv["id"])
+                    st.rerun()
+            with col_menu:
+                with st.popover("", icon=":material/more_vert:", use_container_width=True):
+                    mode = st.session_state.get(menu_state_key, "menu")
+
+                    if mode == "menu":
+                        if st.button("Rename", key=f"rename_btn_{conv['id']}", use_container_width=True):
+                            st.session_state[menu_state_key] = "rename"
+                            st.rerun()
+                        if st.button("Delete", key=f"delete_btn_{conv['id']}", use_container_width=True):
+                            st.session_state[menu_state_key] = "confirm_delete"
+                            st.rerun()
+
+                    elif mode == "rename":
+                        new_title = st.text_input(
+                            "New name", value=conv["title"],
+                            key=f"rename_input_{conv['id']}", label_visibility="collapsed",
+                        )
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Cancel", key=f"rename_cancel_{conv['id']}", use_container_width=True):
+                                st.session_state[menu_state_key] = "menu"
+                                st.rerun()
+                        with c2:
+                            if st.button("Save", key=f"rename_save_{conv['id']}", use_container_width=True, type="primary"):
+                                rename_conversation(conv["id"], new_title.strip() or conv["title"])
+                                st.session_state[menu_state_key] = "menu"
+                                st.rerun()
+
+                    elif mode == "confirm_delete":
+                        st.warning("Delete this conversation? This can't be undone.")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Cancel", key=f"cancel_del_{conv['id']}", use_container_width=True):
+                                st.session_state[menu_state_key] = "menu"
+                                st.rerun()
+                        with c2:
+                            if st.button("Delete", key=f"confirm_del_btn_{conv['id']}", use_container_width=True, type="primary"):
+                                delete_conversation(conv["id"])
+                                st.session_state.pop(menu_state_key, None)
+                                if st.session_state.get("conversation_id") == conv["id"]:
+                                    st.session_state.conversation_id = None
+                                    st.session_state.messages = []
+                                st.rerun()
+        if is_active:
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    st.divider()
+    if st.button("Clear chat", use_container_width=True, icon=":material/delete_sweep:"):
+        st.session_state.messages = []
+        st.rerun()
+
+
+st.title("InsightAI")
+st.caption(f"Mode: **{mode}**")
+
+try:
+    workflow_app, agent_tools, chunk_count = setup_resources()
+    st.sidebar.success(f"Indexed {chunk_count} document chunks")
+    st.session_state.chunk_count = chunk_count
+except Exception as e:
+    st.error("InsightAI failed during startup.")
+    if DEBUG_MODE:
+        st.exception(e)
+    else:
+        st.caption("Contact support if this keeps happening.")
+    st.stop()
+
+if "conversation_id" not in st.session_state:
+    existing = list_conversations(limit=1)
+    if existing:
+        st.session_state.conversation_id = existing[0]["id"]
+        st.session_state.messages = load_conversation_messages(existing[0]["id"])
+    else:
+        st.session_state.conversation_id = create_conversation()
+        st.session_state.messages = []
+
+if not st.session_state.messages:
+    st.markdown(
+        '<div class="chat-answer-card" style="text-align:center;">'
+        '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">Ask InsightAI a question</div>'
+        '<div style="font-size:13px;color:#6B7280;">It will route your question to sales data, '
+        'internal reports, or the web, then show its confidence in the answer.</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    example_cols = st.columns(3)
+    examples = [
+        "What was total revenue by category?",
+        "Is the revenue decline mentioned in our reports reflected in the data?",
+        "How might current inflation affect future sales?",
+    ]
+    clicked_example = None
+    for col, ex in zip(example_cols, examples):
+        with col:
+            if st.button(ex, use_container_width=True, key=f"ex_{ex}"):
+                clicked_example = ex
+else:
+    clicked_example = None
+
+AVATARS = {"user": ":material/person:", "assistant": ":material/auto_awesome:"}
+
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"], avatar=AVATARS.get(msg["role"])):
+        if msg["role"] == "assistant":
+            render_assistant_message(msg["content"], msg.get("meta"))
+        else:
+            safe_markdown(msg["content"])
+
+prompt = st.chat_input("Ask InsightAI a question...") or clicked_example
+
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt, "meta": None})
+    save_message(st.session_state.conversation_id, "user", prompt)
+
+    with st.chat_message("user", avatar=AVATARS["user"]):
+        safe_markdown(prompt)
+
+    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
+        with st.spinner("InsightAI is analyzing..."):
+            try:
+                if mode == "Workflow (v1)":
+                    answer, meta = run_workflow_query(workflow_app, prompt)
+                else:
+                    answer, meta = run_agent_query(prompt, agent_tools)
+            except Exception as e:
+                answer = "I encountered an error while processing your question."
+                meta = {
+                    "mode": mode, "tool_trace": [], "is_error": True,
+                    "confidence": {
+                        "label": "Low", "score": 0.0,
+                        "reasons": ["The query could not be completed because an internal error occurred."],
+                    },
+                    "critique": {
+                        "has_issues": True, "severity": "high",
+                        "findings": [str(e)] if DEBUG_MODE else ["An internal error occurred."],
+                        "verdict": "The system failed to generate a reliable answer.",
+                    },
+                }
+                if DEBUG_MODE:
+                    with st.expander("Show technical details"):
+                        st.exception(e)
+
+        render_assistant_message(answer, meta)
+        st.session_state.messages.append({"role": "assistant", "content": answer, "meta": meta})
+
+    save_message(st.session_state.conversation_id, "assistant", answer, meta)
+
+    if len(st.session_state.messages) == 2:
+        maybe_set_title_from_first_message(st.session_state.conversation_id, prompt)
+    st.rerun()

@@ -85,6 +85,32 @@ future sales?"
 Return:
 ["sql", "web"]
 
+Question:
+"What was our revenue in Q3 2023?"
+Return:
+["sql"]
+
+Question:
+"What was our revenue in 2023 compared with 2022?"
+Return:
+["sql"]
+
+Question:
+"What does our internal report say about our 2023 revenue decline?"
+Return:
+["document_rag"]
+
+Question:
+"What was our revenue in Q3 2023, and how did inflation affect sales during that quarter?"
+Return:
+["sql", "web"]
+
+Question:
+"What was our revenue in Q3 2023, according to our internal reports?"
+Return:
+["sql", "document_rag"]
+
+
 IMPORTANT OUT-OF-SCOPE RULE:
 
 Return an EMPTY JSON ARRAY [] when the question has no plausible
@@ -108,11 +134,40 @@ For these questions, return exactly:
 
 Do NOT route out-of-scope questions to SQL, document_rag, or web.
 
-IMPORTANT:
+IMPORTANT ROUTING PRIORITY RULES:
+
+1. If the user asks for a specific Northwind Traders metric, historical
+   business result, sales figure, revenue, order count, product performance,
+   customer data, or other structured company data, route to "sql" ONLY,
+   unless the question explicitly asks for information from internal reports.
+
+2. If the question asks about what internal reports, documents, or company
+   analysis say, route to "document_rag".
+
+3. If the question asks about CURRENT external information, such as current
+   inflation, current interest rates, Federal Reserve policy, current
+   economic conditions, competitors, regulations, or market trends, route
+   to "web".
+
+4. Use multiple agents ONLY when the question genuinely requires information
+   from multiple sources. Do not add "web" merely because a historical date,
+   quarter, year, or economic concept appears in the question.
+
+5. A historical company metric such as:
+   "What was our revenue in Q3 2023?"
+   is an SQL question, NOT a web question.
+
+6. If SQL cannot answer a question because the database has no matching data,
+   do not automatically route to web. The system should report that the
+   requested internal metric could not be determined from the available
+   database unless the user explicitly asks for external context.
 
 Economic and market-context questions are IN SCOPE when they could
 reasonably help analyze Northwind Traders' business, even if the question
-does not explicitly mention Northwind Traders.
+does not explicitly mention Northwind Traders. However, this rule does NOT
+override the source-specific routing rules above.
+
+
 
 Return ONLY a valid JSON array containing zero or more of:
 
@@ -196,11 +251,8 @@ def route_question(question: str) -> list[str]:
     An empty list means the question is out of scope.
     """
 
-    raw_output = call_llm(
-        ROUTER_SYSTEM_PROMPT,
-        question,
-    )
-
+    raw_output = call_llm(ROUTER_SYSTEM_PROMPT,question,)
+    print(f"[router] DEBUG raw_output: {raw_output!r}")
     if raw_output is None:
         print(
             "[router] WARNING: LLM returned None. "

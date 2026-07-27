@@ -10,8 +10,7 @@ auto-correction attempt that isn't guaranteed to actually fix it.
 """
 import json
 import re
-import sys
-from pathlib import Path
+
 
 
 from core.llm_client import call_llm
@@ -43,9 +42,18 @@ def _format_context_for_critique(question: str, answer: str, rag_result, sql_res
     if rag_result and rag_result.get("answer"):
         parts.append(f"- Document RAG found: {rag_result['answer'][:400]}")
     if sql_result and sql_result.get("row_count", 0) > 0:
-        parts.append(f"- SQL found {sql_result['row_count']} rows via: {sql_result['sql']}")
+        parts.append(
+            f"- SQL query executed:\n{sql_result.get('sql', '')}\n"
+            f"- SQL result columns: {sql_result.get('columns', [])}\n"
+            f"- SQL result rows: {sql_result.get('rows', [])}"
+        )
     elif sql_result:
-        parts.append("- SQL was run but found no matching rows")
+        parts.append(
+            f"- SQL query executed:\n{sql_result.get('sql', '')}\n"
+            f"- SQL query: {sql_result.get('sql', '')}\n"
+            f"- SQL error: {sql_result.get('error')}"
+        )
+
     if web_result and web_result.get("answer"):
         parts.append(f"- Web search found: {web_result['answer'][:400]}")
     if not any([rag_result, sql_result, web_result]):
@@ -55,7 +63,7 @@ def _format_context_for_critique(question: str, answer: str, rag_result, sql_res
 
 
 def _parse_critique_output(raw_output: str) -> dict:
-    text = raw_output.strip()
+    text = (raw_output or "" ).strip()
     fence_match = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL)
     if fence_match:
         text = fence_match.group(1).strip()
@@ -78,5 +86,5 @@ def critique_answer(question: str, answer: str, rag_result: dict, sql_result: di
 
 Review this answer per your instructions and respond with the JSON object."""
 
-    raw_output = call_llm(CRITIQUE_SYSTEM_PROMPT, prompt)
+    raw_output = call_llm(CRITIQUE_SYSTEM_PROMPT, prompt,temperature=0,max_tokens=200)
     return _parse_critique_output(raw_output)

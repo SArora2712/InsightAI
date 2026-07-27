@@ -48,3 +48,4 @@ def get_max_order_date(db_path: Path = DB_PATH) -> str | None:
         return result[0] if result else None
     except sqlite3.Error:
         return None
+

@@ -20,6 +20,7 @@ from agents.orchestrator.synthesizer import synthesize_final_answer
 from agents.orchestrator.confidence import compute_confidence
 from agents.orchestrator.critique import critique_answer
 from core.text_utils import ensure_prose
+from core.llm_client import llm_tracker
 
 class OrchestratorState(TypedDict):
     query: str
@@ -34,6 +35,7 @@ class OrchestratorState(TypedDict):
     critique:Optional[dict]
 
 def router_node(state: OrchestratorState) -> OrchestratorState:
+    llm_tracker.record_call()  
     agents_needed = route_question(state["query"])
     print(f"[orchestrator] Routing to: {agents_needed}")
     return {"agents_needed": agents_needed}

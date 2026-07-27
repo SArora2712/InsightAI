@@ -3,8 +3,7 @@ InsightAI - SQL Agent core: schema-linking -> NL->SQL generation -> validation
 -> execution, with one retry on execution failure.
 """
 import re
-import sys
-from pathlib import Path
+
 
 from core.llm_client import call_llm
 
@@ -20,7 +19,21 @@ _reference_date = None
 
 def _extract_sql(llm_output: str) -> str:
     """Strip markdown code fences if the model wraps its output despite instructions."""
+    if llm_output is None:
+        raise ValueError(
+            "SQL generation failed: call_llm() returned None. "
+            "Check the LLM API response and core/llm_client.py."
+        )
+
+    if not isinstance(llm_output, str):
+        llm_output = str(llm_output)
+
     text = llm_output.strip()
+
+    if not text:
+        raise ValueError(
+            "SQL generation failed: call_llm() returned an empty response."
+        )
     fence_match = re.search(r"```(?:sql)?\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
     if fence_match:
         return fence_match.group(1).strip()

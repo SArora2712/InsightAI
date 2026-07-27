@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 
-from core.llm_client import call_llm_with_tools, call_llm
+from core.llm_client import call_llm_with_tools, call_llm,llm_tracker
 from agents.orchestrator.router import route_question
 from agents.agentic.tools_schema import TOOLS_SCHEMA
 from core.text_utils import ensure_prose
@@ -27,7 +27,12 @@ or business opinions unless the user's question explicitly asked for advice or a
 CRITICAL: Your final answer MUST be written as clear, natural prose sentences for a business user - \
 NEVER as raw JSON, a data dump, or code-formatted output. Synthesizing facts into readable sentences \
 is required; only unsolicited opinions are restricted, not natural writing.
-"""
+
+CRITICAL: Never state a specific number, metric, category, or business term (e.g. a revenue figure, \
+a customer segment, a churn rate, a percentage) unless it appears verbatim or is directly computed \
+from a tool result you actually received in this conversation. If a tool returned an error, an empty \
+result, or nothing relevant to part of the question, say so plainly for that part rather than filling \
+the gap with a plausible-sounding number from general business knowledge."""
 
 
 
@@ -55,7 +60,7 @@ def build_agent_tools(bm25, provider, qdrant_client):
 
 
 def run_agentic_query(question: str, tool_dispatch: dict, max_iterations: int = MAX_ITERATIONS) -> dict:
-    
+    llm_tracker.reset_query()
     agents_needed = route_question(question)
     if not agents_needed:
         return {
