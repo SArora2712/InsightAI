@@ -37,6 +37,7 @@ init_db()
 apply_theme()
 
 
+    
 def extract_agent_results(tool_calls_made: list[dict]):
     rag_result = None
     sql_result = None
@@ -194,9 +195,18 @@ def render_chip_row(meta: dict):
         for label in plain_chips:
             with cols[col_idx]:
                 st.markdown(
-                    f'<span style="font-size:12px;font-weight:500;color:#6B7280;'
-                    f'background:#F3F4F6;border-radius:999px;padding:4px 12px;'
-                    f'display:inline-block;">{label}</span>',
+                    f'''
+                    <span style="
+                        font-size:12px;
+                        font-weight:500;
+                        color:#64748B;
+                        background:#F1F5F9;
+                        border-radius:999px;
+                        padding:4px 11px;
+                        display:inline-block;
+                        margin-right:6px;
+                    ">{label}</span>
+                    ''',
                     unsafe_allow_html=True,
                 )
             col_idx += 1
@@ -217,108 +227,150 @@ def render_chip_row(meta: dict):
 def render_assistant_message(answer: str, meta: dict):
     is_error = bool((meta or {}).get("is_error"))
 
-    with st.container(border=True):
-        if is_error:
-            st.error("This response encountered an error.")
-        safe_markdown(answer)
+    if is_error:
+        st.markdown(
+            f"""
+            <div style="
+                background:#FEF2F2;
+                border:1px solid #FECACA;
+                border-left:4px solid #EF4444;
+                border-radius:14px;
+                padding:16px 18px;
+                margin-bottom:8px;
+            ">
+                <div style="font-weight:600;color:#B91C1C;margin-bottom:4px;">
+                    ⚠ Processing failed
+                </div>
+                <div style="color:#7F1D1D;">{answer}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="
+                background:#FFFFFF;
+                border:1px solid #E2E8F0;
+                border-radius:14px;
+                padding:16px 18px;
+                box-shadow:0 2px 12px rgba(0,0,0,0.04);
+                margin-bottom:6px;
+            ">
+                <div style="font-size:14.5px;line-height:1.65;color:#1E293B;">
+                    {answer}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     render_chip_row(meta)
 
-
 with st.sidebar:
 
+    # Brand (only once)
+    st.markdown(
+        """
+        <div class="ia-brand">
+            <div class="ia-brand-title">
+                <span class="ia-brand-mark">✦</span> Insight<span>AI</span>
+            </div>
+            <div class="ia-brand-subtitle">Business Intelligence</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    section_label("Session")
+    # New analysis
+    if st.button(
+        "New analysis",
+        use_container_width=True,
+        icon=":material/add:",
+        type="primary",
+        key="new_analysis_btn",
+    ):
+        st.session_state.conversation_id = None
+        st.session_state.messages = []
+        st.rerun()
+
+    # AI Mode
+    st.markdown('<div class="ia-section-label">AI MODE</div>', unsafe_allow_html=True)
     mode = st.radio(
         "Mode",
         ["Workflow (v1)", "Agent (v2)"],
         label_visibility="collapsed",
+        horizontal=True,
         help=(
             "Workflow: a fixed router selects agents in advance.\n\n"
             "Agent: the LLM dynamically decides which tools to use and in what order."
         ),
     )
 
+    # Data sources
+    st.markdown('<div class="ia-section-label">DATA SOURCES</div>', unsafe_allow_html=True)
     with st.popover("3 sources connected", icon=":material/database:", use_container_width=True):
         st.markdown(
-            "- Internal reports (Doc RAG)\n"
-            "- Sales database (SQL)\n"
-            "- Live web search"
+            """
+            **● Internal reports** — Document RAG  
+            **● Sales database** — SQL analytics  
+            **● Live web search** — External intelligence
+            """
         )
 
-    st.divider()
-    section_label("History")
+    # History (quick switcher only)
+    st.markdown('<div class="ia-section-label">HISTORY</div>', unsafe_allow_html=True)
 
-    if st.button("New chat", use_container_width=True, icon=":material/add:"):
-        st.session_state.conversation_id = create_conversation()
-        st.session_state.messages = []
-        st.rerun()
+    conversations = list_conversations(limit=8)
+    real_conversations = [
+        conv for conv in conversations
+        if load_conversation_messages(conv["id"])
+    ]
 
+    if not real_conversations:
+        st.markdown(
+            """
+            <div class="ia-history-empty">
+                <div class="ia-empty-title">No analyses yet</div>
+                <div class="ia-empty-text">Start a new analysis to see it here.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        for conv in real_conversations:
+            is_active = conv["id"] == st.session_state.get("conversation_id")
+            row_key = f"history_row_active_{conv['id']}" if is_active else f"history_row_{conv['id']}"
+            
+            title = (conv.get("title") or "Untitled").strip()
+            if len(title) > 34:
+                title = title[:34] + "…"
 
-    conversations = list_conversations()
-    for conv in conversations:
-        is_active = conv["id"] == st.session_state.get("conversation_id")
-        row_key = f"history_row_active_{conv['id']}" if is_active else f"history_row_{conv['id']}"
-        menu_state_key = f"history_menu_{conv['id']}"
+            messages = load_conversation_messages(conv["id"])
 
-        with st.container(key=row_key):
-            col_open, col_menu = st.columns([7, 1])
-            with col_open:
-                if st.button(conv["title"], key=f"conv_{conv['id']}", use_container_width=True):
+            with st.container(key=row_key):
+                if st.button(title, key=f"conv_{conv['id']}", use_container_width=True):
                     st.session_state.conversation_id = conv["id"]
-                    st.session_state.messages = load_conversation_messages(conv["id"])
+                    st.session_state.messages = messages
                     st.rerun()
-            with col_menu:
-                with st.popover("", icon=":material/more_vert:", use_container_width=True):
-                    mode = st.session_state.get(menu_state_key, "menu")
-
-                    if mode == "menu":
-                        if st.button("Rename", key=f"rename_btn_{conv['id']}", use_container_width=True):
-                            st.session_state[menu_state_key] = "rename"
-                            st.rerun()
-                        if st.button("Delete", key=f"delete_btn_{conv['id']}", use_container_width=True):
-                            st.session_state[menu_state_key] = "confirm_delete"
-                            st.rerun()
-
-                    elif mode == "rename":
-                        new_title = st.text_input(
-                            "New name", value=conv["title"],
-                            key=f"rename_input_{conv['id']}", label_visibility="collapsed",
-                        )
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            if st.button("Cancel", key=f"rename_cancel_{conv['id']}", use_container_width=True):
-                                st.session_state[menu_state_key] = "menu"
-                                st.rerun()
-                        with c2:
-                            if st.button("Save", key=f"rename_save_{conv['id']}", use_container_width=True, type="primary"):
-                                rename_conversation(conv["id"], new_title.strip() or conv["title"])
-                                st.session_state[menu_state_key] = "menu"
-                                st.rerun()
-
-                    elif mode == "confirm_delete":
-                        st.warning("Delete this conversation? This can't be undone.")
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            if st.button("Cancel", key=f"cancel_del_{conv['id']}", use_container_width=True):
-                                st.session_state[menu_state_key] = "menu"
-                                st.rerun()
-                        with c2:
-                            if st.button("Delete", key=f"confirm_del_btn_{conv['id']}", use_container_width=True, type="primary"):
-                                delete_conversation(conv["id"])
-                                st.session_state.pop(menu_state_key, None)
-                                if st.session_state.get("conversation_id") == conv["id"]:
-                                    st.session_state.conversation_id = None
-                                    st.session_state.messages = []
-                                st.rerun()
-        if is_active:
-            st.markdown('</div>', unsafe_allow_html=True)
-
     st.divider()
+
     if st.button("Clear chat", use_container_width=True, icon=":material/delete_sweep:"):
         st.session_state.messages = []
         st.rerun()
+    if st.button(
+        "Settings",
+        use_container_width=True,
+        icon=":material/settings:",
+    ):
+        st.info("Settings will be available soon.")
 
+    if st.button(
+        "Help & feedback",
+        use_container_width=True,
+        icon=":material/help_outline:",
+    ):
+        st.info("Help center will be available soon.")
 
 st.title("InsightAI")
 st.caption(f"Mode: **{mode}**")
@@ -336,24 +388,31 @@ except Exception as e:
     st.stop()
 
 if "conversation_id" not in st.session_state:
-    existing = list_conversations(limit=1)
-    if existing:
-        st.session_state.conversation_id = existing[0]["id"]
-        st.session_state.messages = load_conversation_messages(existing[0]["id"])
-    else:
-        st.session_state.conversation_id = create_conversation()
-        st.session_state.messages = []
+    st.session_state.conversation_id = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 if not st.session_state.messages:
     st.markdown(
-        '<div class="chat-answer-card" style="text-align:center;">'
-        '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">Ask InsightAI a question</div>'
-        '<div style="font-size:13px;color:#6B7280;">It will route your question to sales data, '
-        'internal reports, or the web, then show its confidence in the answer.</div>'
-        '</div>',
+        """
+        <div style="
+            text-align: center;
+            padding: 28px 20px 18px;
+            margin: 12px 0 20px;
+        ">
+            <div style="font-size:16px;font-weight:600;color:#0F172A;margin-bottom:6px;">
+                Ask InsightAI a question
+            </div>
+            <div style="font-size:13.5px;color:#64748B;max-width:520px;margin:0 auto;line-height:1.5;">
+                It will route your question to sales data, internal reports, or the web,
+                then show its confidence in the answer.
+            </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    example_cols = st.columns(3)
+
+    example_cols = st.columns(3, gap="medium")
     examples = [
         "What was total revenue by category?",
         "Is the revenue decline mentioned in our reports reflected in the data?",
@@ -366,7 +425,7 @@ if not st.session_state.messages:
                 clicked_example = ex
 else:
     clicked_example = None
-
+    
 AVATARS = {"user": ":material/person:", "assistant": ":material/auto_awesome:"}
 
 for msg in st.session_state.messages:
@@ -379,9 +438,13 @@ for msg in st.session_state.messages:
 prompt = st.chat_input("Ask InsightAI a question...") or clicked_example
 
 if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt, "meta": None})
-    save_message(st.session_state.conversation_id, "user", prompt)
-
+    if st.session_state.conversation_id is None:
+        st.session_state.conversation_id = create_conversation()
+        st.session_state.messages = []
+    last_msg = st.session_state.messages[-1] if st.session_state.messages else None
+    if not last_msg or last_msg["content"] != prompt or last_msg["role"] != "user":
+        st.session_state.messages.append({"role": "user", "content": prompt, "meta": None})
+        save_message(st.session_state.conversation_id, "user", prompt)
     with st.chat_message("user", avatar=AVATARS["user"]):
         safe_markdown(prompt)
 

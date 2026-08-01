@@ -2,17 +2,19 @@
 InsightAI - Dashboard page. Real metrics only: SQL totals, confidence/conflict
 stats derived from actual saved conversations, live document chunk count.
 """
+import hashlib
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer, PRIMARY, BORDER, TEXT_SECONDARY
+from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer
 from core.history import list_conversations, load_conversation_messages
 from agents.sql_agent.executor import execute_sql
 from core.setup import setup_resources
 
 st.set_page_config(page_title="InsightAI - Dashboard", page_icon="📊", layout="wide")
 apply_theme()
+
 
 try:
     _, _, chunk_count = setup_resources()
@@ -21,6 +23,50 @@ except Exception:
 
 st.title("Dashboard")
 st.caption("Northwind Traders overview")
+
+
+def empty_state(message: str):
+    """Clean premium empty state – no emojis."""
+    st.markdown(
+        f"""
+        <div style="
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 32px 20px;
+            text-align: center;
+            color: #64748B;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-top: 6px;
+        ">
+            {message}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# Shared Plotly config (keeps the toolbar clean)
+PLOTLY_CONFIG = {
+    "displayModeBar": True,
+    "displaylogo": False,
+    "modeBarButtonsToRemove": [
+        "zoom2d", "pan2d", "select2d", "lasso2d",
+        "autoScale2d", "toImage", "zoomIn2d", "zoomOut2d"
+    ],
+    "scrollZoom": True,
+}
+
+PLOTLY_LAYOUT_BASE = dict(
+    
+    margin=dict(l=10, r=10, t=12, b=10),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter"),
+)
+
+AXIS_STYLE = dict(tickfont=dict(size=11, color="#6B7280", family="Inter"))
 
 
 @st.cache_data(ttl=60)
@@ -48,8 +94,49 @@ def get_revenue_by_category():
     return pd.DataFrame(result["rows"])
 
 
+def get_history_analytics():
+    """Single pass over saved history - feeds confidence trend, source
+    usage, and query volume charts without scanning history three times."""
+    conversations = list_conversations(limit=50)
+    confidence_points = []
+    source_counts = {"SQL": 0, "Docs": 0, "Web": 0}
+    daily_counts = {}
+    tag_map = {
+        "query_sales_database": "SQL", "sql": "SQL",
+        "search_internal_documents": "Docs", "document_rag": "Docs",
+        "search_web": "Web", "web": "Web",
+    }
+
+    for conv in conversations:
+        for msg in load_conversation_messages(conv["id"]):
+            if msg.get("role") != "assistant":
+                continue
+            meta = msg.get("meta") or {}
+            created_at = msg.get("created_at")
+
+            confidence = meta.get("confidence") or {}
+            if confidence.get("score") is not None and created_at:
+                confidence_points.append((created_at, confidence["score"]))
+
+            sources = set()
+            for step in meta.get("tool_trace", []):
+                sources.add(step.get("tool", ""))
+            for agent in meta.get("agents_needed", []):
+                sources.add(agent)
+            for s in sources:
+                label = tag_map.get(s)
+                if label:
+                    source_counts[label] += 1
+
+            if created_at:
+                day = created_at[:10]
+                daily_counts[day] = daily_counts.get(day, 0) + 1
+
+    confidence_points.sort(key=lambda x: x[0])
+    return confidence_points, source_counts, daily_counts
+
+
 def get_confidence_and_conflict_stats():
-    """Derived from actual saved conversation history, not synthetic data."""
     conversations = list_conversations(limit=20)
     scores, conflicts = [], 0
     for conv in conversations:
@@ -67,8 +154,6 @@ def get_confidence_and_conflict_stats():
 
 
 def confidence_label_from_score(score: float) -> str:
-    """Mirrors thresholds used elsewhere (agents/orchestrator/confidence.py) -
-    verify these match your actual implementation."""
     if score >= 0.7:
         return "High"
     if score >= 0.4:
@@ -76,8 +161,12 @@ def confidence_label_from_score(score: float) -> str:
     return "Low"
 
 
+# ---------------------------------------------------------------------------
+# Metrics row
+# ---------------------------------------------------------------------------
 revenue, order_count = get_total_revenue()
 avg_confidence, conflict_count, sample_size = get_confidence_and_conflict_stats()
+confidence_points, source_counts, daily_counts = get_history_analytics()
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -89,8 +178,6 @@ with col2:
     else:
         st.metric("Avg confidence", "—", "No queries yet")
 with col3:
-    # Point-in-time counts, not trends - no up-arrow delta (a green arrow
-    # here previously implied "improving," which this number doesn't mean).
     st.metric("Conflicts flagged", str(conflict_count))
     st.caption("This session")
 with col4:
@@ -99,8 +186,12 @@ with col4:
 
 spacer("lg")
 
-col_chart, col_gap = st.columns([3, 1])
-with col_chart:
+# ---------------------------------------------------------------------------
+# Row 1: revenue by category | confidence trend
+# ---------------------------------------------------------------------------
+row1_col1, row1_col2 = st.columns(2)
+
+with row1_col1:
     st.markdown("##### Revenue by category")
     try:
         df = get_revenue_by_category()
@@ -109,68 +200,232 @@ with col_chart:
                 x=df["revenue"],
                 y=df["category"],
                 orientation="h",
-                marker_color=PRIMARY,
+                marker=dict(color="#6366F1", line=dict(width=0)),
                 text=[f"${v/1_000_000:.1f}M" for v in df["revenue"]],
                 textposition="outside",
-                textfont=dict(size=12, color=TEXT_SECONDARY, family="JetBrains Mono"),
+                textfont=dict(size=12, color="#374151", family="Inter"),
+                cliponaxis=False,
+                hovertemplate="<b>%{y}</b><br>Revenue: $%{x:,.0f}<extra></extra>",
             ))
             fig.update_layout(
-                height=320,
-                margin=dict(l=0, r=40, t=8, b=8),
+                height=340,                          # slightly taller for breathing room
+                margin=dict(l=8, r=95, t=10, b=10),  # more right margin for labels
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(showgrid=False, visible=False),
-                yaxis=dict(showgrid=False, autorange="reversed", tickfont=dict(size=13, family="Inter")),
                 showlegend=False,
-                bargap=0.35,
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor="rgba(0,0,0,0.04)",
+                    showticklabels=False,
+                    zeroline=False,
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    autorange="reversed",
+                    tickfont=dict(size=12.5, color="#374151", family="Inter"),
+                ),
+                bargap=0.38,                         # more space between bars
             )
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         else:
-            st.info("No category revenue data available yet.")
+            empty_state("No category revenue data available yet.")
     except Exception:
-        st.info("Category breakdown isn't available right now.")
+        empty_state("Category breakdown isn’t available right now.")
+
+with row1_col2:
+    st.markdown("##### Confidence trend")
+    if len(confidence_points) >= 2:
+        df_conf = pd.DataFrame(confidence_points, columns=["time", "score"])
+        df_conf["time"] = pd.to_datetime(df_conf["time"])
+
+        # Simple 3-point moving average for smoother visual
+        df_conf["smooth"] = df_conf["score"].rolling(window=3, min_periods=1, center=True).mean()
+
+        fig2 = go.Figure()
+
+        # Raw points (subtle)
+        fig2.add_trace(go.Scatter(
+            x=df_conf["time"],
+            y=df_conf["score"],
+            mode="markers",
+            marker=dict(size=5, color="rgba(99,102,241,0.45)"),
+            hovertemplate="%{x|%b %d, %H:%M}<br>Confidence: %{y:.2f}<extra></extra>",
+            name="Actual",
+        ))
+
+        # Smoothed line
+        fig2.add_trace(go.Scatter(
+            x=df_conf["time"],
+            y=df_conf["smooth"],
+            mode="lines",
+            line=dict(color="#6366F1", width=2.5),
+            hoverinfo="skip",
+            name="Trend",
+        ))
+
+        fig2.update_layout(
+            **PLOTLY_LAYOUT_BASE,
+            height=340,
+            xaxis=dict(showgrid=False, **AXIS_STYLE),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor="rgba(0,0,0,0.04)",
+                range=[0, 1.08],
+                **AXIS_STYLE,
+            ),
+            showlegend=False,
+        )
+        st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
+    else:
+        empty_state("Not enough saved queries yet to show a trend.")
 
 spacer("lg")
+
+# ---------------------------------------------------------------------------
+# Row 2: source usage | query volume
+# ---------------------------------------------------------------------------
+row2_col1, row2_col2 = st.columns(2)
+
+with row2_col1:
+    st.markdown("##### Source usage")
+    if sum(source_counts.values()) > 0:
+        fig3 = go.Figure(go.Pie(
+            labels=list(source_counts.keys()),
+            values=list(source_counts.values()),
+            hole=0.62,
+            marker=dict(colors=["#4F46E5", "#06B6D4", "#8B5CF6"]),
+            textfont=dict(size=12, family="Inter"),
+            hovertemplate="%{label}: %{value} (%{percent})<extra></extra>",
+        ))
+        fig3.update_layout(
+            height=340,
+            margin=dict(l=10, r=10, t=12, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.18,
+                font=dict(size=11, family="Inter"),
+            ),
+        )
+        st.plotly_chart(fig3, use_container_width=True, config=PLOTLY_CONFIG)
+    else:
+        empty_state("No source usage data yet.")
+
+with row2_col2:
+    st.markdown("##### Query volume")
+    if daily_counts:
+        df_daily = pd.DataFrame(sorted(daily_counts.items()), columns=["day", "count"])
+        fig4 = go.Figure(go.Bar(
+            x=df_daily["day"],
+            y=df_daily["count"],
+            marker=dict(color="#06B6D4", line=dict(width=0)),
+            hovertemplate="%{x}<br>%{y} queries<extra></extra>",
+        ))
+        fig4.update_layout(
+            **PLOTLY_LAYOUT_BASE,
+            height=340,
+            xaxis=dict(showgrid=False, **AXIS_STYLE),
+            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.04)", **AXIS_STYLE),
+            bargap=0.32,
+        )
+        st.plotly_chart(fig4, use_container_width=True, config=PLOTLY_CONFIG)
+    else:
+        empty_state("No query volume data yet.")
+
+spacer("lg")
+
+# ---------------------------------------------------------------------------
+# Recent insights (with deduplication)
+# ---------------------------------------------------------------------------
 st.markdown("##### Recent insights")
 
-conversations = list_conversations(limit=3)
+conversations = list_conversations(limit=12)  # pull a few more so we can dedupe
+
 if not conversations:
-    st.info("No conversations yet. Head to Chat to ask InsightAI something.")
+    empty_state("No conversations yet. Head to Chat to ask InsightAI something.")
 else:
+    shown = 0
+    seen_hashes = set()
+
     for conv in conversations:
-        messages = load_conversation_messages(conv["id"])
-        last_assistant_msg = next((m for m in reversed(messages) if m["role"] == "assistant"), None)
-        if not last_assistant_msg:
-            continue
+        try:
+            messages = load_conversation_messages(conv["id"])
+            last_assistant_msg = next(
+                (m for m in reversed(messages) if m.get("role") == "assistant"), None
+            )
+            if not last_assistant_msg:
+                continue
 
-        meta = last_assistant_msg.get("meta") or {}
-        confidence = meta.get("confidence") or {}
-        label = confidence.get("label", "Medium")
+            meta = last_assistant_msg.get("meta") or {}
+            confidence = meta.get("confidence") or {}
+            label = confidence.get("label", "Medium")
+            score = confidence.get("score", 0.0)
 
-        with st.container(border=True):
-            col_title, col_badge = st.columns([4, 1])
-            with col_title:
-                st.markdown(f"**{conv['title'].replace('$', chr(92) + '$')}**")
-            with col_badge:
-                st.markdown(confidence_badge_html(label, confidence.get("score", 0)), unsafe_allow_html=True)
+            raw_content = last_assistant_msg.get("content", "")
+            title = conv.get("title", "Untitled")
 
-            raw_content = last_assistant_msg["content"]
-            snippet = raw_content[:180]
-            if len(raw_content) > 180:
-                snippet += "..."
-            st.caption(snippet.replace("$", "\\$"))
+            # Deduplication key: title + first 120 chars of content
+            dedupe_key = f"{title}::{raw_content[:120]}".lower().strip()
+            content_hash = hashlib.md5(dedupe_key.encode()).hexdigest()
 
-            tags_html = ""
-            if meta.get("tool_trace") or meta.get("agents_needed"):
-                sources = set()
-                for step in meta.get("tool_trace", []):
-                    sources.add(step.get("tool", ""))
-                for agent in meta.get("agents_needed", []):
-                    sources.add(agent)
-                tag_map = {"query_sales_database": "SQL", "sql": "SQL",
-                           "search_internal_documents": "Docs", "document_rag": "Docs",
-                           "search_web": "Web", "web": "Web"}
-                for s in sources:
-                    tags_html += source_tag_html(tag_map.get(s, s))
-            if tags_html:
-                st.markdown(tags_html, unsafe_allow_html=True)
+            if content_hash in seen_hashes:
+                continue
+            seen_hashes.add(content_hash)
+
+            snippet = raw_content[:160].strip() + ("..." if len(raw_content) > 160 else "")
+            snippet_escaped = snippet.replace("$", "\\$")
+
+            sources = set()
+            for step in meta.get("tool_trace", []):
+                sources.add(step.get("tool", ""))
+            for agent in meta.get("agents_needed", []):
+                sources.add(agent)
+
+            tag_map = {
+                "query_sales_database": "SQL", "sql": "SQL",
+                "search_internal_documents": "Docs", "document_rag": "Docs",
+                "search_web": "Web", "web": "Web",
+            }
+            tags_html = "".join(
+                source_tag_html(tag_map.get(s, s)) for s in sources if s
+            )
+
+            st.markdown(
+                f"""
+                <div style="
+                    background: #FFFFFF;
+                    border: 1px solid #E2E8F0;
+                    border-left: 4px solid #6366F1;
+                    border-radius: 14px;
+                    padding: 16px 18px;
+                    margin-bottom: 14px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+                ">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+                        <div style="font-weight:600; font-size:14.5px; color:#0F172A; line-height:1.4;">
+                            {title}
+                        </div>
+                        <div>
+                            {confidence_badge_html(label, score)}
+                        </div>
+                    </div>
+                    <div style="font-size:13.5px; color:#475569; line-height:1.55; margin-bottom:10px;">
+                        {snippet_escaped}
+                    </div>
+                    <div>{tags_html}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            shown += 1
+            if shown >= 4:          # show up to 4 unique insights
+                break
+
+        except Exception as e:
+            st.warning(f"Could not load conversation: {e}")
+
+    if shown == 0:
+        empty_state("Conversations exist but none have an assistant reply yet.")

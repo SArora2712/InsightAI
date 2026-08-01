@@ -1,7 +1,7 @@
 """
 InsightAI - Shared theme, injected on every page.
-Design direction: refined dark sidebar with real navigation hierarchy,
-light elevated canvas, indigo accent, tabular numerals for data.
+Design direction: refined dark sidebar, light elevated canvas,
+indigo accent, clean SaaS look.
 """
 
 import streamlit as st
@@ -11,54 +11,63 @@ import streamlit as st
 # Color tokens
 # ---------------------------------------------------------------------------
 
-SIDEBAR_BG = "#0B0F1A"
-SIDEBAR_ACTIVE_BG = "#1A2333"
-SIDEBAR_HOVER_BG = "#151B29"
-SIDEBAR_TEXT = "#E4E7EC"
-SIDEBAR_TEXT_MUTED = "#6B7280"
+SIDEBAR_BG          = "#0B0F19"
+SIDEBAR_ACTIVE_BG   = "#1E1B4B"
+SIDEBAR_HOVER_BG    = "#1F2937"
+SIDEBAR_TEXT        = "#F3F4F6"
+SIDEBAR_TEXT_MUTED  = "#9CA3AF"
+SIDEBAR_TEXT_DIM    = "#6B7280"
 
-BG = "#F7F8FA"
-CARD_BG = "#FFFFFF"
-BORDER = "#E8EAEE"
-BORDER_HOVER = "#D8DCE3"
+SIDEBAR_CARD        = "#111827"
+SIDEBAR_CARD_HOVER  = "#172033"
+SIDEBAR_BORDER      = "rgba(255,255,255,0.07)"
+SIDEBAR_ACCENT      = "#818CF8"
+SIDEBAR_ACCENT_BG   = "rgba(99,102,241,0.16)"
+SIDEBAR_MUTED       = "#64748B"
 
-PRIMARY = "#4F46E5"
-PRIMARY_HOVER = "#4338CA"
-PRIMARY_BG = "#EEF2FF"
+BG                  = "#F7F8FA"
+CARD_BG             = "#FFFFFF"
+BORDER              = "#E8EAEE"
+BORDER_HOVER        = "#D8DCE3"
 
-TEXT_PRIMARY = "#111827"
-TEXT_SECONDARY = "#6B7280"
-TEXT_TERTIARY = "#9CA3AF"
+PRIMARY             = "#4F46E5"
+PRIMARY_HOVER       = "#4338CA"
+PRIMARY_BG          = "#EEF2FF"
+PRIMARY_SOFT        = "rgba(99,102,241,0.15)"
+
+TEXT_PRIMARY        = "#111827"
+TEXT_SECONDARY      = "#6B7280"
+TEXT_TERTIARY       = "#9CA3AF"
 
 
 # ---------------------------------------------------------------------------
 # Semantic colors
 # ---------------------------------------------------------------------------
 
-SUCCESS = "#10B981"
-SUCCESS_BG = "#ECFDF5"
+SUCCESS        = "#10B981"
+SUCCESS_BG     = "#ECFDF5"
 
-WARNING = "#F59E0B"
-WARNING_BG = "#FFFBEB"
+WARNING        = "#F59E0B"
+WARNING_BG     = "#FFFBEB"
 WARNING_BORDER = "#FDE68A"
 
-DANGER = "#EF4444"
-DANGER_BG = "#FEF2F2"
+DANGER         = "#EF4444"
+DANGER_BG      = "#FEF2F2"
 
-INFO = "#6366F1"
-INFO_BG = "#EEF2FF"
+INFO           = "#6366F1"
+INFO_BG        = "#EEF2FF"
 
 
 # ---------------------------------------------------------------------------
 # Spacing / radius / shadow
 # ---------------------------------------------------------------------------
 
-SPACE_1 = "4px"
-SPACE_2 = "8px"
-SPACE_3 = "12px"
-SPACE_4 = "16px"
-SPACE_6 = "24px"
-SPACE_8 = "32px"
+SPACE_1  = "4px"
+SPACE_2  = "8px"
+SPACE_3  = "12px"
+SPACE_4  = "16px"
+SPACE_6  = "24px"
+SPACE_8  = "32px"
 SPACE_12 = "48px"
 
 RADIUS_SM = "6px"
@@ -69,7 +78,6 @@ SHADOW_SM = (
     "0 1px 2px rgba(16,24,40,0.04), "
     "0 1px 1px rgba(16,24,40,0.03)"
 )
-
 SHADOW_MD = "0 4px 16px rgba(16,24,40,0.08)"
 SHADOW_LG = "0 8px 24px rgba(16,24,40,0.12)"
 
@@ -79,9 +87,9 @@ SHADOW_LG = "0 8px 24px rgba(16,24,40,0.12)"
 # ---------------------------------------------------------------------------
 
 CONFIDENCE_COLORS = {
-    "High": (SUCCESS, SUCCESS_BG),
+    "High":   (SUCCESS, SUCCESS_BG),
     "Medium": (WARNING, WARNING_BG),
-    "Low": (DANGER, DANGER_BG),
+    "Low":    (DANGER, DANGER_BG),
 }
 
 
@@ -110,12 +118,51 @@ def apply_theme():
            GLOBAL
         ===================================================== */
 
-        .stApp {{
-            background: linear-gradient(135deg, #F8FAFC 0%, #EEF1F6 100%);
+        html, body, [data-testid="stAppViewContainer"], .stApp {{
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
         }}
 
-        footer {{
-            visibility: hidden;
+        section.main {{
+            height: auto !important;
+            overflow-y: visible !important;
+        }}
+
+        .block-container {{
+            padding-top: 0.6rem !important;
+            padding-bottom: 3rem !important;
+            height: auto !important;
+            overflow: visible !important;
+            max-width: 100% !important;
+        }}
+
+        [data-testid="stVerticalBlock"] {{
+            height: auto !important;
+            overflow: visible !important;
+        }}
+
+        .stApp {{
+            background: linear-gradient(165deg, #F8FAFC 0%, #EEF2FF 55%, #E0E7FF 100%) !important;
+        }}
+
+        footer, #MainMenu, .stDeployButton {{
+            display: none !important;
+        }}
+
+        header[data-testid="stHeader"] {{
+            background: transparent !important;
+            height: 0px !important;
+            min-height: 0px !important;
+        }}
+
+        section.main > div {{
+            padding-top: 0.4rem !important;
+        }}
+
+        [data-testid="stVerticalBlock"] > div:first-child {{
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }}
 
         .stApp,
@@ -139,250 +186,19 @@ def apply_theme():
             font-variant-numeric: tabular-nums;
         }}
 
-        [data-testid="stHeader"] {{
-            visibility: visible !important;
-            display: flex !important;
-        }}
-
-        header {{
-            visibility: visible !important;
-        }}
-
-
-        /* =====================================================
-           SIDEBAR
-        ===================================================== */
-
-        section[data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, #191340 0%, #0B0F1A 55%) !important;
-            border-right: 1px solid rgba(255,255,255,0.06);
-        }}
-
-        [data-testid="stSidebarCollapsedControl"] {{
-            visibility: visible !important;
-            display: flex !important;
-            opacity: 1 !important;
-            z-index: 999999 !important;
-            position: fixed !important;
-            top: 12px !important;
-            left: 12px !important;
-        }}
-
-        section[data-testid="stSidebar"] * {{
-            color: {SIDEBAR_TEXT} !important;
-        }}
-
-        section[data-testid="stSidebar"] .stCaption,
-        section[data-testid="stSidebar"] p,
-        section[data-testid="stSidebar"] small {{
-            color: {SIDEBAR_TEXT_MUTED} !important;
-        }}
-
-        section[data-testid="stSidebar"] hr {{
-            border-color: rgba(255,255,255,0.07) !important;
-            margin: {SPACE_4} 0;
-        }}
-
-
-        /* =====================================================
-           SIDEBAR NAVIGATION
-        ===================================================== */
-
-        section[data-testid="stSidebar"]
-        [data-testid="stPageLink-NavLink"] {{
-            border-radius: {RADIUS_MD};
-            padding: 8px 10px !important;
-            margin-bottom: 2px;
-            transition: background 120ms ease;
-        }}
-
-        section[data-testid="stSidebar"]
-        [data-testid="stPageLink-NavLink"]:hover {{
-            background: {SIDEBAR_HOVER_BG} !important;
-        }}
-
-        section[data-testid="stSidebar"]
-        [aria-current="page"] {{
-            background: {SIDEBAR_ACTIVE_BG} !important;
-            box-shadow: inset 2px 0 0 {PRIMARY}, 0 0 14px rgba(79,70,229,0.35);
-            font-weight: 600 !important;
-        }}
-
-
-        /* =====================================================
-           SIDEBAR BUTTONS (generic)
-        ===================================================== */
-
-        section[data-testid="stSidebar"]
-        div[data-testid="column"] button {{
-            background: transparent !important;
-            border: none !important;
-            text-align: left !important;
-            font-weight: 400 !important;
-            border-radius: {RADIUS_MD} !important;
-            transition: background 120ms ease;
-        }}
-
-        section[data-testid="stSidebar"]
-        div[data-testid="column"] button:hover {{
-            background: {SIDEBAR_HOVER_BG} !important;
-        }}
-
-
-        /* =====================================================
-           HISTORY ROW - kebab overlays on hover, title spans full width
-        ===================================================== */
-
-        div[class*="st-key-history_row"] {{
-            position: relative;
-            border-radius: {RADIUS_MD};
-            margin-bottom: 2px;
-            transition: background 120ms ease;
-        }}
-
-        div[class*="st-key-history_row"]:hover {{
-            background: {SIDEBAR_HOVER_BG};
-        }}
-
-        div[class*="st-key-history_row_active"] {{
-            background: {SIDEBAR_ACTIVE_BG} !important;
-            box-shadow: inset 2px 0 0 {PRIMARY}, 0 0 14px rgba(79,70,229,0.3);
-        }}
-
-        div[class*="st-key-history_row"] div[data-testid="stHorizontalBlock"] {{
-            align-items: center;
-        }}
-
-        div[class*="st-key-history_row"] div[data-testid="column"]:first-child {{
-            width: 100% !important;
-            flex: 1 1 100% !important;
-        }}
-
-        div[class*="st-key-history_row"] div[data-testid="column"]:last-child {{
-            position: absolute !important;
-            right: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: auto !important;
-            opacity: 0;
-            transition: opacity 120ms ease;
-        }}
-
-        div[class*="st-key-history_row"]:hover div[data-testid="column"]:last-child,
-        div[class*="st-key-history_row_active"] div[data-testid="column"]:last-child {{
-            opacity: 1;
-        }}
-
-        div[class*="st-key-history_row"] button,
-        div[class*="st-key-history_row"] [data-testid^="stBaseButton"] {{
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: {SIDEBAR_TEXT} !important;
-            text-align: left !important;
-            font-weight: 400 !important;
-            font-size: 13px !important;
-            padding: 6px 24px 6px 8px !important;
-        }}
-
-        div[class*="st-key-history_row"] button p {{
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            margin: 0 !important;
-        }}
-
-        div[class*="st-key-history_row"] div[data-testid="stPopover"] > button {{
-            background: transparent !important;
-            border: none !important;
-            color: {SIDEBAR_TEXT_MUTED} !important;
-            min-height: 0 !important;
-            padding: 4px 6px !important;
-        }}
-
-
-        /* =====================================================
-           SIDEBAR SECTION LABELS
-        ===================================================== */
-
-        .sb-label {{
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.06em;
-            color: {SIDEBAR_TEXT_MUTED} !important;
-            text-transform: uppercase;
-            margin: {SPACE_2} 0 {SPACE_2} 4px;
-        }}
-
-
-        /* =====================================================
-           MODE SEGMENTED CONTROL
-        ===================================================== */
-
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"] {{
-            background: {SIDEBAR_HOVER_BG};
-            border-radius: {RADIUS_MD};
-            padding: 3px;
-            flex-direction: row !important;
-            gap: 0 !important;
-        }}
-
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"] label > div:first-child,
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"] label input,
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"] label svg {{
-            display: none !important;
-            width: 0 !important;
-            height: 0 !important;
-            opacity: 0 !important;
-        }}
-
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"] label {{
-            flex: 1;
-            text-align: center;
-            margin: 0 !important;
-            border-radius: 6px;
-            padding: 6px 8px !important;
-            font-size: 12px !important;
-            font-weight: 500 !important;
-            color: {SIDEBAR_TEXT_MUTED} !important;
-        }}
-
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"]
-        label:has(input:checked) {{
-            background: linear-gradient(135deg, {PRIMARY} 0%, #7C3AED 100%);
-            box-shadow: 0 0 10px rgba(124,58,237,0.4);
-        }}
-
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"]
-        label:has(input:checked),
-        section[data-testid="stSidebar"]
-        div[role="radiogroup"]
-        label:has(input:checked) * {{
-            color: #FFFFFF !important;
-            font-weight: 600 !important;
-        }}
-
 
         /* =====================================================
            TYPOGRAPHY
         ===================================================== */
 
         h1 {{
-            color: {TEXT_PRIMARY};
+            font-size: 28px !important;
             font-weight: 700 !important;
             letter-spacing: -0.02em;
-            font-size: 28px !important;
+            color: #0F172A !important;
         }}
 
-        h2,
-        h3 {{
+        h2, h3 {{
             color: {TEXT_PRIMARY};
             font-weight: 600 !important;
             letter-spacing: -0.01em;
@@ -393,9 +209,18 @@ def apply_theme():
             font-size: 12px;
         }}
 
+        div[data-testid="stMarkdown"] h5,
+        .stMarkdown h5 {{
+            font-size: 17px !important;
+            font-weight: 600 !important;
+            color: #1E293B !important;
+            margin-bottom: 12px !important;
+            letter-spacing: -0.01em;
+        }}
+
 
         /* =====================================================
-           SPACING
+           SPACING HELPERS
         ===================================================== */
 
         .spacer-sm {{ height: {SPACE_2}; }}
@@ -408,17 +233,17 @@ def apply_theme():
         ===================================================== */
 
         div[data-testid="stMetric"] {{
-            background-color: {CARD_BG};
-            border: 1px solid {BORDER};
-            border-radius: {RADIUS_LG};
-            padding: {SPACE_4};
-            box-shadow: {SHADOW_SM};
-            transition: box-shadow 150ms ease, border-color 150ms ease;
+            background: #FFFFFF !important;
+            border: 1px solid #E0E7FF !important;
+            border-left: 4px solid #6366F1 !important;
+            border-radius: 14px !important;
+            box-shadow: 0 2px 12px rgba(79, 70, 229, 0.08) !important;
+            padding: 18px 16px !important;
         }}
 
         div[data-testid="stMetric"]:hover {{
-            box-shadow: {SHADOW_MD};
-            border-color: {BORDER_HOVER};
+            box-shadow: 0 6px 24px rgba(79,70,229,0.12) !important;
+            border-color: #C7D2FE;
         }}
 
         div[data-testid="stMetricLabel"] {{
@@ -437,24 +262,20 @@ def apply_theme():
 
 
         /* =====================================================
-           CARDS - flat white, thin border, soft shadow + tiny glow
+           CARDS
         ===================================================== */
 
         div[data-testid="stVerticalBlockBorderWrapper"] > div {{
-            background-color: {CARD_BG};
-            border-radius: {RADIUS_LG};
-            box-shadow: {SHADOW_SM}, 0 0 0 1px rgba(79,70,229,0.04);
+            background: #FFFFFF !important;
+            border-radius: 14px !important;
+            border: 1px solid #E0E7FF !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
         }}
 
         div[data-testid="stExpander"] {{
-            border: 1px solid {BORDER} !important;
-            border-radius: {RADIUS_MD} !important;
-        }}
-
-        div[data-testid="stPopover"] > div {{
-            border-radius: {RADIUS_MD} !important;
-            box-shadow: {SHADOW_LG} !important;
-            border: 1px solid {BORDER} !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 10px !important;
+            background: #F8FAFC !important;
         }}
 
 
@@ -465,12 +286,13 @@ def apply_theme():
         .stButton button {{
             border-radius: {RADIUS_MD};
             font-weight: 500;
-            transition: background 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
         }}
 
         .stButton button[kind="primary"] {{
-            background: linear-gradient(135deg, {PRIMARY} 0%, #7C3AED 100%);
-            border: none;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+            color: white !important;
         }}
 
         .stButton button[kind="primary"]:hover {{
@@ -478,94 +300,83 @@ def apply_theme():
             box-shadow: 0 0 16px rgba(124,58,237,0.35);
         }}
 
-        .stButton button:disabled {{
-            opacity: 0.5;
-        }}
-
-        .stButton button:focus-visible,
-        input:focus-visible,
-        textarea:focus-visible {{
-            outline: 2px solid {PRIMARY} !important;
-            outline-offset: 1px;
-        }}
-
         div[data-testid="stTextInput"] input {{
             border-radius: {RADIUS_MD} !important;
             border: 1px solid {BORDER} !important;
         }}
 
-        div[data-testid="stTextInput"] input:focus {{
-            border-color: {PRIMARY} !important;
-        }}
+
+        /* =====================================================
+           CHAT INPUT
+        ===================================================== */
 
         div[data-testid="stChatInput"] {{
-            border-radius: {RADIUS_MD} !important;
-            transition: box-shadow 150ms ease;
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 14px !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04) !important;
         }}
 
         div[data-testid="stChatInput"]:focus-within {{
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.12) !important;
-            border-color: {PRIMARY} !important;
+            border-color: #6366F1 !important;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+        }}
+
+        div[data-testid="stChatInput"] * {{
+            outline: none !important;
         }}
 
 
         /* =====================================================
-           CHAT MESSAGE CARDS
+           CHAT MESSAGES
         ===================================================== */
 
-        .chat-answer-card {{
-            background: {CARD_BG};
-            border: 1px solid {BORDER};
-            border-radius: {RADIUS_LG};
-            padding: {SPACE_6};
-            box-shadow: {SHADOW_SM};
-            margin-bottom: {SPACE_2};
+        .ai-answer-card {{
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 14px !important;
+            padding: 16px 18px !important;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+            margin-bottom: 6px !important;
         }}
 
-        .chat-answer-card.is-error {{
-            border-left: 3px solid {DANGER};
+        div[data-testid="stChatMessage"] {{
+            width: 100% !important;
+            margin-bottom: 12px !important;
+        }}
+
+        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {{
+            display: flex !important;
+            flex-direction: row-reverse !important;
+            justify-content: flex-start !important;
+            gap: 8px !important;
+        }}
+
+        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+        [data-testid="stChatMessageContent"] {{
+            background: #F1F5F9 !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 16px 16px 4px 16px !important;
+            padding: 12px 16px !important;
+            max-width: 70% !important;
+            margin-left: auto !important;
         }}
 
 
         /* =====================================================
-           METADATA CHIP ROW
+           CHIPS
         ===================================================== */
 
-        .chip-row {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: {SPACE_2};
-            margin-top: {SPACE_3};
-        }}
-
-        div[class*="st-key-chip_row"]
-        div[data-testid="stPopover"] > button {{
-            background: #F3F4F6 !important;
-            border: 1px solid transparent !important;
+        div[class*="st-key-chip_row"] div[data-testid="stPopover"] > button {{
+            background: #F1F5F9 !important;
+            border: 1px solid #E2E8F0 !important;
             border-radius: 999px !important;
             padding: 4px 12px !important;
             font-size: 12px !important;
             font-weight: 500 !important;
             color: {TEXT_SECONDARY} !important;
-            min-height: 0 !important;
-            transition: background 120ms ease, border-color 120ms ease;
+            min-height: 28px !important;
         }}
-
-        div[class*="st-key-chip_row"]
-        div[data-testid="stPopover"] > button:hover {{
-            background: #E5E7EB !important;
-        }}
-
-        div[class*="st-key-chip_row"]
-        div[data-testid="stPopover"] > button p {{
-            font-size: 12px !important;
-            font-weight: 500 !important;
-        }}
-
-
-        /* =====================================================
-           GRADIENT CONFIDENCE CHIPS
-        ===================================================== */
 
         div[class*="st-key-conf_chip_high"] div[data-testid="stPopover"] > button {{
             background: linear-gradient(90deg, #10B981, #34D399) !important;
@@ -573,8 +384,7 @@ def apply_theme():
             border-radius: 999px !important;
             box-shadow: 0 0 8px rgba(16,185,129,0.35) !important;
             font-weight: 600 !important;
-            min-height: 0 !important;
-            padding: 4px 12px !important;
+            color: white !important;
         }}
 
         div[class*="st-key-conf_chip_medium"] div[data-testid="stPopover"] > button {{
@@ -582,8 +392,7 @@ def apply_theme():
             border: none !important;
             border-radius: 999px !important;
             font-weight: 600 !important;
-            min-height: 0 !important;
-            padding: 4px 12px !important;
+            color: white !important;
         }}
 
         div[class*="st-key-conf_chip_low"] div[data-testid="stPopover"] > button {{
@@ -591,8 +400,7 @@ def apply_theme():
             border: none !important;
             border-radius: 999px !important;
             font-weight: 600 !important;
-            min-height: 0 !important;
-            padding: 4px 12px !important;
+            color: white !important;
         }}
 
         div[class*="st-key-conf_chip"] div[data-testid="stPopover"] > button p {{
@@ -602,24 +410,305 @@ def apply_theme():
 
 
         /* =====================================================
-           SKELETON LOADER
+           SIDEBAR BASE
         ===================================================== */
 
-        .skeleton-line {{
-            background: linear-gradient(90deg, #E8EAEE 25%, #F1F2F5 50%, #E8EAEE 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.4s infinite;
-            border-radius: 6px;
-            height: 14px;
-            margin: 6px 0;
+        section[data-testid="stSidebar"] {{
+            background: linear-gradient(180deg, #0F172A 0%, #020617 100%) !important;
+            border-right: 1px solid rgba(255,255,255,0.06) !important;
         }}
 
-        @keyframes shimmer {{
-            0% {{ background-position: 200% 0; }}
-            100% {{ background-position: -200% 0; }}
+        section[data-testid="stSidebar"] > div {{
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+        }}
+
+        section[data-testid="stSidebar"] .stCaption,
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] small {{
+            color: {SIDEBAR_TEXT_MUTED} !important;
+        }}
+
+        section[data-testid="stSidebar"] hr {{
+            border-color: rgba(255,255,255,0.07) !important;
+            margin: {SPACE_4} 0;
+        }}
+
+
+        /* =====================================================
+           PAGE NAVIGATION (restored + styled)
+        ===================================================== */
+
+        section[data-testid="stSidebarNav"] {{
+            display: block !important;
+            padding-top: 4px !important;
+            margin-bottom: 8px !important;
+        }}
+
+        section[data-testid="stSidebarNav"] a {{
+            color: #94A3B8 !important;
+            border-radius: 8px !important;
+            padding: 8px 12px !important;
+            font-size: 13.5px !important;
+            font-weight: 500 !important;
+            margin: 2px 0 !important;
+        }}
+
+        section[data-testid="stSidebarNav"] a:hover {{
+            background: rgba(255,255,255,0.05) !important;
+            color: #E2E8F0 !important;
+        }}
+
+        section[data-testid="stSidebarNav"] a[aria-current="page"],
+        section[data-testid="stSidebarNav"] [aria-current="page"],
+        section[data-testid="stSidebar"] [aria-current="page"] {{
+            background: rgba(99,102,241,0.16) !important;
+            color: #E0E7FF !important;
+            box-shadow: inset 3px 0 0 #818CF8 !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+        }}
+
+
+        /* =====================================================
+           BRAND
+        ===================================================== */
+
+        .ia-brand {{
+            padding: 6px 4px 14px 4px !important;
+            margin-bottom: 6px !important;
+        }}
+
+        .ia-brand-title {{
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.03em !important;
+            color: #F8FAFC !important;
+            line-height: 1.2 !important;
+        }}
+
+        .ia-brand-title span {{
+            color: #A5B4FC !important;
+        }}
+
+        .ia-brand-mark {{
+            color: #818CF8 !important;
+            margin-right: 6px !important;
+            font-size: 18px !important;
+        }}
+
+        .ia-brand-subtitle {{
+            margin-top: 3px !important;
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            color: #94A3B8 !important;
+            letter-spacing: 0.10em !important;
+            text-transform: uppercase !important;
+        }}
+
+
+        /* =====================================================
+           SECTION LABELS
+        ===================================================== */
+
+        .sb-label,
+        .ia-section-label {{
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.10em !important;
+            color: #64748B !important;
+            text-transform: uppercase !important;
+            margin: 18px 0 8px 4px !important;
+        }}
+
+
+        /* =====================================================
+           MODE SWITCHER (no red dot)
+        ===================================================== */
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] {{
+            background: #1E293B !important;
+            border-radius: 12px !important;
+            padding: 4px !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
+        section[data-testid="stSidebar"] div[role="radiogroup"] label input,
+        section[data-testid="stSidebar"] div[role="radiogroup"] label svg {{
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            opacity: 0 !important;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label {{
+            flex: 1 !important;
+            text-align: center !important;
+            border-radius: 9px !important;
+            padding: 9px 10px !important;
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            color: #94A3B8 !important;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
+            color: #FFFFFF !important;
+            font-weight: 600 !important;
+            box-shadow: 0 0 14px rgba(124,58,237,0.40) !important;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked),
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) * {{
+            color: #FFFFFF !important;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked)):hover {{
+            background: rgba(255,255,255,0.04) !important;
+            color: #E2E8F0 !important;
+        }}
+
+
+        /* =====================================================
+           HISTORY ROWS
+        ===================================================== */
+
+        div[class*="st-key-history_row"] {{
+            border-radius: 8px !important;
+            margin: 1px 2px !important;
+        }}
+
+        div[class*="st-key-history_row"]:hover {{
+            background: rgba(255,255,255,0.035) !important;
+        }}
+
+        div[class*="st-key-history_row_active"] {{
+            background: rgba(99,102,241,0.16) !important;
+            box-shadow: inset 3px 0 0 #818CF8 !important;
+            border-radius: 8px !important;
+        }}
+
+        div[class*="st-key-history_row"] button,
+        div[class*="st-key-history_row"] [data-testid^="stBaseButton"] {{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #CBD5E1 !important;
+            text-align: left !important;
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            padding: 8px 12px !important;
+            width: 100% !important;
+            border-radius: 7px !important;
+        }}
+
+        div[class*="st-key-history_row_active"] button {{
+            color: #F8FAFC !important;
+            font-weight: 600 !important;
+        }}
+
+        div[class*="st-key-history_row"] button p {{
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+        }}
+
+
+        /* =====================================================
+           SIDEBAR PRIMARY BUTTON
+        ===================================================== */
+
+        section[data-testid="stSidebar"] button[kind="primary"] {{
+            width: 100% !important;
+            min-height: 40px !important;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
+            border: none !important;
+            border-radius: 10px !important;
+            color: #FFFFFF !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28) !important;
+        }}
+
+        section[data-testid="stSidebar"] button[kind="primary"] p {{
+            color: #FFFFFF !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+        }}
+
+        section[data-testid="stSidebar"] button[kind="primary"]:hover {{
+            background: linear-gradient(135deg, #4338CA 0%, #6D28D9 100%) !important;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.36) !important;
+        }}
+
+
+        /* =====================================================
+           EXAMPLE QUESTION BUTTONS
+        ===================================================== */
+
+        div[data-testid="stHorizontalBlock"] .stButton button {{
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            color: #334155 !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            padding: 14px 12px !important;
+            min-height: 64px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+            white-space: normal !important;
+            line-height: 1.35 !important;
+        }}
+
+        div[data-testid="stHorizontalBlock"] .stButton button:hover {{
+            border-color: #C7D2FE !important;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.10) !important;
+            color: #1E293B !important;
         }}
 
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Fallback JS for user message alignment
+    st.markdown(
+        """
+        <script>
+        function forceAlignUserMessages() {
+            const docs = [document, window.parent.document];
+            docs.forEach(doc => {
+                const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
+                messages.forEach(msg => {
+                    const isUser = msg.querySelector('[data-testid="stChatMessageAvatarUser"]')
+                                || msg.querySelector('img[alt="user"]');
+                    if (isUser) {
+                        msg.style.setProperty('display', 'flex', 'important');
+                        msg.style.setProperty('flex-direction', 'row-reverse', 'important');
+                        msg.style.setProperty('justify-content', 'flex-start', 'important');
+
+                        const content = msg.querySelector('[data-testid="stChatMessageContent"]');
+                        if (content) {
+                            content.style.setProperty('background', '#F1F5F9', 'important');
+                            content.style.setProperty('border', '1px solid #E2E8F0', 'important');
+                            content.style.setProperty('border-radius', '16px 16px 4px 16px', 'important');
+                            content.style.setProperty('padding', '12px 16px', 'important');
+                            content.style.setProperty('max-width', '70%', 'important');
+                            content.style.setProperty('margin-left', 'auto', 'important');
+                        }
+                    }
+                });
+            });
+        }
+
+        forceAlignUserMessages();
+        const observer = new MutationObserver(forceAlignUserMessages);
+        observer.observe(window.parent.document.body, { childList: true, subtree: true });
+        setInterval(forceAlignUserMessages, 1000);
+        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -634,12 +723,27 @@ def section_label(text: str):
 
 
 def confidence_badge_html(label: str, score: float) -> str:
-    fg, bg = CONFIDENCE_COLORS.get(label, (TEXT_SECONDARY, "#F1F5F9"))
-    return (
-        f'<span style="font-size:11px;font-weight:600;padding:3px {SPACE_2};'
-        f'border-radius:{RADIUS_SM};background:{bg};color:{fg};white-space:nowrap;">'
-        f'{label} confidence</span>'
-    )
+    if label == "High":
+        return (
+            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
+            f'border-radius:999px;background:linear-gradient(90deg,#10B981,#34D399);'
+            f'color:white;box-shadow:0 0 8px rgba(16,185,129,0.35);">'
+            f'{label} · {score:.2f}</span>'
+        )
+    elif label == "Medium":
+        return (
+            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
+            f'border-radius:999px;background:linear-gradient(90deg,#F59E0B,#FBBF24);'
+            f'color:white;">'
+            f'{label} · {score:.2f}</span>'
+        )
+    else:
+        return (
+            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
+            f'border-radius:999px;background:linear-gradient(90deg,#EF4444,#F87171);'
+            f'color:white;">'
+            f'{label} · {score:.2f}</span>'
+        )
 
 
 def source_tag_html(label: str) -> str:
@@ -652,7 +756,7 @@ def source_tag_html(label: str) -> str:
 def banner_html(message: str, kind: str = "warning") -> str:
     palette = {
         "warning": (WARNING_BG, WARNING_BORDER, "#92400E", "warning"),
-        "error": (DANGER_BG, DANGER, "#991B1B", "error"),
+        "error":   (DANGER_BG, DANGER, "#991B1B", "error"),
     }
     bg, border, text, icon = palette.get(kind, palette["warning"])
     return (
