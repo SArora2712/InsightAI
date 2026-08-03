@@ -251,7 +251,14 @@ def route_question(question: str) -> list[str]:
     An empty list means the question is out of scope.
     """
 
-    raw_output = call_llm(ROUTER_SYSTEM_PROMPT,question,)
+    try:
+        raw_output = call_llm(ROUTER_SYSTEM_PROMPT, question)
+    except Exception as e:
+        print(
+            f"[router] ERROR: LLM router call failed ({type(e).__name__}: {e}). "
+            "Falling back to all agents."
+        )
+        return list(VALID_AGENTS)
     print(f"[router] DEBUG raw_output: {raw_output!r}")
     if raw_output is None:
         print(

@@ -1,9 +1,10 @@
 """
 InsightAI - Shared theme, injected on every page.
-Design direction: refined dark sidebar, light elevated canvas,
-indigo accent, clean SaaS look.
+Design direction: light navy sidebar, light elevated canvas,
+navy + gold brand palette (gold = small accents only).
 """
 
+import html
 import streamlit as st
 
 
@@ -21,8 +22,8 @@ SIDEBAR_TEXT_DIM    = "#6B7280"
 SIDEBAR_CARD        = "#111827"
 SIDEBAR_CARD_HOVER  = "#172033"
 SIDEBAR_BORDER      = "rgba(255,255,255,0.07)"
-SIDEBAR_ACCENT      = "#818CF8"
-SIDEBAR_ACCENT_BG   = "rgba(99,102,241,0.16)"
+SIDEBAR_ACCENT      = "#B8935A"
+SIDEBAR_ACCENT_BG   = "rgba(184,147,90,0.16)"
 SIDEBAR_MUTED       = "#64748B"
 
 BG                  = "#F7F8FA"
@@ -30,14 +31,17 @@ CARD_BG             = "#FFFFFF"
 BORDER              = "#E8EAEE"
 BORDER_HOVER        = "#D8DCE3"
 
-PRIMARY             = "#4F46E5"
-PRIMARY_HOVER       = "#4338CA"
-PRIMARY_BG          = "#EEF2FF"
-PRIMARY_SOFT        = "rgba(99,102,241,0.15)"
+PRIMARY             = "#10203D"
+PRIMARY_HOVER       = "#1B2E55"
+PRIMARY_BG          = "#EEF1F6"
+PRIMARY_SOFT        = "rgba(16,32,61,0.12)"
 
-TEXT_PRIMARY        = "#111827"
-TEXT_SECONDARY      = "#6B7280"
-TEXT_TERTIARY       = "#9CA3AF"
+GOLD                = "#B8935A"
+GOLD_SOFT           = "rgba(184,147,90,0.18)"
+
+TEXT_PRIMARY        = "#10203D"
+TEXT_SECONDARY      = "#5A6472"
+TEXT_TERTIARY       = "#8A93A3"
 
 
 # ---------------------------------------------------------------------------
@@ -54,8 +58,8 @@ WARNING_BORDER = "#FDE68A"
 DANGER         = "#EF4444"
 DANGER_BG      = "#FEF2F2"
 
-INFO           = "#6366F1"
-INFO_BG        = "#EEF2FF"
+INFO           = "#10203D"
+INFO_BG        = "#EEF1F6"
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +106,9 @@ def apply_theme():
     st.markdown(
         """
         <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
             rel="stylesheet"
         >
         """,
@@ -113,6 +118,7 @@ def apply_theme():
     st.markdown(
         f"""
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
         /* =====================================================
            GLOBAL
@@ -130,11 +136,13 @@ def apply_theme():
         }}
 
         .block-container {{
-            padding-top: 0.6rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 3rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
             height: auto !important;
             overflow: visible !important;
-            max-width: 100% !important;
+            max-width: 1400px !important;
         }}
 
         [data-testid="stVerticalBlock"] {{
@@ -142,8 +150,48 @@ def apply_theme():
             overflow: visible !important;
         }}
 
-        .stApp {{
-            background: linear-gradient(165deg, #F8FAFC 0%, #EEF2FF 55%, #E0E7FF 100%) !important;
+        .stApp,
+        section.main,
+        .block-container {{
+            background: #F7F8FA !important;
+        }}
+
+        /* =====================================================
+           ALERTS (st.info / st.warning / st.error / st.success)
+        ===================================================== */
+
+        div[data-testid="stAlert"] {{
+            border-radius: 8px !important;
+            border: none !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }}
+
+        div[data-testid="stAlertContainer"][kind="info"] {{
+            background: #EEF1F6 !important;
+            border-left: 3px solid #10203D !important;
+            color: #1A2B4A !important;
+        }}
+
+        div[data-testid="stAlertContainer"][kind="warning"] {{
+            background: #FBF3E7 !important;
+            border-left: 3px solid #B8935A !important;
+            color: #6B4A1F !important;
+        }}
+
+        div[data-testid="stAlertContainer"][kind="error"] {{
+            background: #FEF2F2 !important;
+            border-left: 3px solid #D64545 !important;
+            color: #8A2424 !important;
+        }}
+
+        div[data-testid="stAlertContainer"][kind="success"] {{
+            background: #ECFDF5 !important;
+            border-left: 3px solid #10B981 !important;
+            color: #0E6B47 !important;
+        }}
+
+        div[data-testid="stAlert"] p {{
+            color: inherit !important;
         }}
 
         footer, #MainMenu, .stDeployButton {{
@@ -157,7 +205,7 @@ def apply_theme():
         }}
 
         section.main > div {{
-            padding-top: 0.4rem !important;
+            padding-top: 0 !important;
         }}
 
         [data-testid="stVerticalBlock"] > div:first-child {{
@@ -181,8 +229,10 @@ def apply_theme():
             font-family: 'Material Symbols Rounded' !important;
         }}
 
-        .mono-num {{
-            font-family: 'JetBrains Mono', monospace !important;
+        .mono-num,
+        .confidence-score,
+        .metric-value {{
+            font-family: 'IBM Plex Mono', monospace !important;
             font-variant-numeric: tabular-nums;
         }}
 
@@ -193,15 +243,17 @@ def apply_theme():
 
         h1 {{
             font-size: 28px !important;
-            font-weight: 700 !important;
-            letter-spacing: -0.02em;
-            color: #0F172A !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em;
+            font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
+            color: {PRIMARY} !important;
         }}
 
         h2, h3 {{
             color: {TEXT_PRIMARY};
             font-weight: 600 !important;
             letter-spacing: -0.01em;
+            font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
         }}
 
         .subtle-caption {{
@@ -213,7 +265,7 @@ def apply_theme():
         .stMarkdown h5 {{
             font-size: 17px !important;
             font-weight: 600 !important;
-            color: #1E293B !important;
+            color: {PRIMARY} !important;
             margin-bottom: 12px !important;
             letter-spacing: -0.01em;
         }}
@@ -234,16 +286,16 @@ def apply_theme():
 
         div[data-testid="stMetric"] {{
             background: #FFFFFF !important;
-            border: 1px solid #E0E7FF !important;
-            border-left: 4px solid #6366F1 !important;
-            border-radius: 14px !important;
-            box-shadow: 0 2px 12px rgba(79, 70, 229, 0.08) !important;
+            border: 1px solid {BORDER} !important;
+            border-left: 3px solid {GOLD} !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 2px rgba(16, 32, 61, 0.04) !important;
             padding: 18px 16px !important;
         }}
 
         div[data-testid="stMetric"]:hover {{
-            box-shadow: 0 6px 24px rgba(79,70,229,0.12) !important;
-            border-color: #C7D2FE;
+            box-shadow: 0 6px 24px rgba(16,32,61,0.10) !important;
+            border-color: {BORDER_HOVER};
         }}
 
         div[data-testid="stMetricLabel"] {{
@@ -255,8 +307,8 @@ def apply_theme():
         div[data-testid="stMetricValue"] {{
             color: {TEXT_PRIMARY} !important;
             font-size: 24px !important;
-            font-weight: 700 !important;
-            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 600 !important;
+            font-family: 'IBM Plex Mono', monospace !important;
             font-variant-numeric: tabular-nums;
         }}
 
@@ -267,15 +319,16 @@ def apply_theme():
 
         div[data-testid="stVerticalBlockBorderWrapper"] > div {{
             background: #FFFFFF !important;
-            border-radius: 14px !important;
-            border: 1px solid #E0E7FF !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+            border-radius: 8px !important;
+            border: 1px solid #E4E7EC !important;
+            border-left: 3px solid {GOLD} !important;
+            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
         }}
 
         div[data-testid="stExpander"] {{
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 10px !important;
-            background: #F8FAFC !important;
+            border: 1px solid {BORDER} !important;
+            border-radius: 8px !important;
+            background: #F7F8FA !important;
         }}
 
 
@@ -284,25 +337,43 @@ def apply_theme():
         ===================================================== */
 
         .stButton button {{
-            border-radius: {RADIUS_MD};
+            border-radius: 6px !important;
+            border: 1px solid {PRIMARY};
+            background: {PRIMARY};
+            color: #ffffff;
             font-weight: 500;
+            letter-spacing: 0.01em;
+            transition: all 0.15s ease;
+        }}
+
+        .stButton button:hover {{
+            background: #16305C !important;
+            border-color: {GOLD} !important;
+            transform: translateY(-1px);
         }}
 
         .stButton button[kind="primary"] {{
-            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
-            border: none !important;
-            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+            background: {PRIMARY} !important;
+            border: 1px solid {PRIMARY} !important;
+            box-shadow: 0 4px 14px rgba(16, 32, 61, 0.20) !important;
             color: white !important;
         }}
 
         .stButton button[kind="primary"]:hover {{
-            background: linear-gradient(135deg, {PRIMARY_HOVER} 0%, #6D28D9 100%);
-            box-shadow: 0 0 16px rgba(124,58,237,0.35);
+            background: #16305C !important;
+            border: 1px solid {GOLD} !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(16,32,61,0.18) !important;
         }}
 
         div[data-testid="stTextInput"] input {{
-            border-radius: {RADIUS_MD} !important;
-            border: 1px solid {BORDER} !important;
+            border-radius: 8px !important;
+            border: 1.5px solid #D8DCE3 !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }}
+
+        div[data-testid="stTextInput"] input:focus {{
+            border-color: {GOLD} !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT} !important;
         }}
 
 
@@ -312,14 +383,14 @@ def apply_theme():
 
         div[data-testid="stChatInput"] {{
             background: #FFFFFF !important;
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 14px !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.04) !important;
+            border: 1.5px solid #D8DCE3 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
         }}
 
         div[data-testid="stChatInput"]:focus-within {{
-            border-color: #6366F1 !important;
-            box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+            border-color: {GOLD} !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT} !important;
         }}
 
         div[data-testid="stChatInput"] * {{
@@ -331,13 +402,29 @@ def apply_theme():
            CHAT MESSAGES
         ===================================================== */
 
+        .insight-card,
         .ai-answer-card {{
             background: #FFFFFF !important;
-            border: 1px solid #E2E8F0 !important;
-            border-radius: 14px !important;
-            padding: 16px 18px !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+            border: 1px solid #E4E7EC !important;
+            border-left: 3px solid {GOLD} !important;
+            border-radius: 8px !important;
+            padding: 20px 24px !important;
+            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+        }}
+
+        .ai-answer-card {{
             margin-bottom: 6px !important;
+        }}
+
+        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"])
+        [data-testid="stChatMessageContent"] {{
+            background: #FFFFFF !important;
+            border: 1px solid #E4E7EC !important;
+            border-left: 3px solid {GOLD} !important;
+            border-radius: 8px !important;
+            padding: 20px 24px !important;
+            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+            max-width: 100% !important;
         }}
 
         div[data-testid="stChatMessage"] {{
@@ -355,7 +442,7 @@ def apply_theme():
         div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
         [data-testid="stChatMessageContent"] {{
             background: #F1F5F9 !important;
-            border: 1px solid #E2E8F0 !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 16px 16px 4px 16px !important;
             padding: 12px 16px !important;
             max-width: 70% !important;
@@ -382,7 +469,7 @@ def apply_theme():
             background: linear-gradient(90deg, #10B981, #34D399) !important;
             border: none !important;
             border-radius: 999px !important;
-            box-shadow: 0 0 8px rgba(16,185,129,0.35) !important;
+            box-shadow: inset 3px 0 0 {GOLD}, 0 0 8px rgba(16,185,129,0.35) !important;
             font-weight: 600 !important;
             color: white !important;
         }}
@@ -391,6 +478,7 @@ def apply_theme():
             background: linear-gradient(90deg, #F59E0B, #FBBF24) !important;
             border: none !important;
             border-radius: 999px !important;
+            box-shadow: inset 3px 0 0 {GOLD} !important;
             font-weight: 600 !important;
             color: white !important;
         }}
@@ -399,6 +487,7 @@ def apply_theme():
             background: linear-gradient(90deg, #EF4444, #F87171) !important;
             border: none !important;
             border-radius: 999px !important;
+            box-shadow: inset 3px 0 0 {GOLD} !important;
             font-weight: 600 !important;
             color: white !important;
         }}
@@ -421,6 +510,14 @@ def apply_theme():
         section[data-testid="stSidebar"] > div {{
             padding-left: 14px !important;
             padding-right: 14px !important;
+        }}
+
+        div[data-testid="stSidebarHeader"] {{
+            display: none !important;
+        }}
+
+        div[data-testid="stSidebarContent"] {{
+            padding-top: 0 !important;
         }}
 
         section[data-testid="stSidebar"] .stCaption,
@@ -446,7 +543,7 @@ def apply_theme():
         }}
 
         section[data-testid="stSidebarNav"] a {{
-            color: #94A3B8 !important;
+            color: {SIDEBAR_TEXT_MUTED} !important;
             border-radius: 8px !important;
             padding: 8px 12px !important;
             font-size: 13.5px !important;
@@ -462,9 +559,9 @@ def apply_theme():
         section[data-testid="stSidebarNav"] a[aria-current="page"],
         section[data-testid="stSidebarNav"] [aria-current="page"],
         section[data-testid="stSidebar"] [aria-current="page"] {{
-            background: rgba(99,102,241,0.16) !important;
-            color: #E0E7FF !important;
-            box-shadow: inset 3px 0 0 #818CF8 !important;
+            background: {SIDEBAR_ACCENT_BG} !important;
+            color: {SIDEBAR_TEXT} !important;
+            box-shadow: inset 3px 0 0 {SIDEBAR_ACCENT} !important;
             font-weight: 600 !important;
             border-radius: 8px !important;
         }}
@@ -483,16 +580,16 @@ def apply_theme():
             font-size: 20px !important;
             font-weight: 700 !important;
             letter-spacing: -0.03em !important;
-            color: #F8FAFC !important;
+            color: {SIDEBAR_TEXT} !important;
             line-height: 1.2 !important;
         }}
 
         .ia-brand-title span {{
-            color: #A5B4FC !important;
+            color: {SIDEBAR_ACCENT} !important;
         }}
 
         .ia-brand-mark {{
-            color: #818CF8 !important;
+            color: {SIDEBAR_ACCENT} !important;
             margin-right: 6px !important;
             font-size: 18px !important;
         }}
@@ -501,7 +598,7 @@ def apply_theme():
             margin-top: 3px !important;
             font-size: 10px !important;
             font-weight: 600 !important;
-            color: #94A3B8 !important;
+            color: {SIDEBAR_TEXT_MUTED} !important;
             letter-spacing: 0.10em !important;
             text-transform: uppercase !important;
         }}
@@ -516,7 +613,7 @@ def apply_theme():
             font-size: 10px !important;
             font-weight: 600 !important;
             letter-spacing: 0.10em !important;
-            color: #64748B !important;
+            color: {SIDEBAR_MUTED} !important;
             text-transform: uppercase !important;
             margin: 18px 0 8px 4px !important;
         }}
@@ -549,19 +646,19 @@ def apply_theme():
             padding: 9px 10px !important;
             font-size: 12.5px !important;
             font-weight: 500 !important;
-            color: #94A3B8 !important;
+            color: {SIDEBAR_TEXT_MUTED} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
-            color: #FFFFFF !important;
+            background: {GOLD} !important;
+            color: {PRIMARY} !important;
             font-weight: 600 !important;
-            box-shadow: 0 0 14px rgba(124,58,237,0.40) !important;
+            box-shadow: 0 0 14px {GOLD_SOFT} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked),
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) * {{
-            color: #FFFFFF !important;
+            color: {PRIMARY} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked)):hover {{
@@ -584,8 +681,8 @@ def apply_theme():
         }}
 
         div[class*="st-key-history_row_active"] {{
-            background: rgba(99,102,241,0.16) !important;
-            box-shadow: inset 3px 0 0 #818CF8 !important;
+            background: {SIDEBAR_ACCENT_BG} !important;
+            box-shadow: inset 3px 0 0 {SIDEBAR_ACCENT} !important;
             border-radius: 8px !important;
         }}
 
@@ -594,7 +691,7 @@ def apply_theme():
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            color: #CBD5E1 !important;
+            color: {SIDEBAR_TEXT_MUTED} !important;
             text-align: left !important;
             font-size: 12.5px !important;
             font-weight: 500 !important;
@@ -604,7 +701,7 @@ def apply_theme():
         }}
 
         div[class*="st-key-history_row_active"] button {{
-            color: #F8FAFC !important;
+            color: {SIDEBAR_TEXT} !important;
             font-weight: 600 !important;
         }}
 
@@ -623,25 +720,26 @@ def apply_theme():
         section[data-testid="stSidebar"] button[kind="primary"] {{
             width: 100% !important;
             min-height: 40px !important;
-            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
-            border: none !important;
-            border-radius: 10px !important;
-            color: #FFFFFF !important;
+            background: {GOLD} !important;
+            border: 1px solid {GOLD} !important;
+            border-radius: 6px !important;
+            color: {PRIMARY} !important;
             font-size: 13px !important;
             font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28) !important;
+            box-shadow: 0 4px 12px rgba(184,147,90,0.30) !important;
         }}
 
         section[data-testid="stSidebar"] button[kind="primary"] p {{
-            color: #FFFFFF !important;
+            color: {PRIMARY} !important;
             font-size: 13px !important;
             font-weight: 600 !important;
             margin: 0 !important;
         }}
 
         section[data-testid="stSidebar"] button[kind="primary"]:hover {{
-            background: linear-gradient(135deg, #4338CA 0%, #6D28D9 100%) !important;
-            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.36) !important;
+            background: #C7A56B !important;
+            border: 1px solid #C7A56B !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(184,147,90,0.35) !important;
         }}
 
 
@@ -649,11 +747,11 @@ def apply_theme():
            EXAMPLE QUESTION BUTTONS
         ===================================================== */
 
-        div[data-testid="stHorizontalBlock"] .stButton button {{
+        div[class*="st-key-ex_"] .stButton button {{
             background: #FFFFFF !important;
-            border: 1px solid #E2E8F0 !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 12px !important;
-            color: #334155 !important;
+            color: {TEXT_SECONDARY} !important;
             font-size: 13px !important;
             font-weight: 500 !important;
             padding: 14px 12px !important;
@@ -663,10 +761,29 @@ def apply_theme():
             line-height: 1.35 !important;
         }}
 
-        div[data-testid="stHorizontalBlock"] .stButton button:hover {{
-            border-color: #C7D2FE !important;
-            box-shadow: 0 4px 12px rgba(99,102,241,0.10) !important;
-            color: #1E293B !important;
+        div[class*="st-key-ex_"] .stButton button:hover {{
+            border-color: {PRIMARY} !important;
+            box-shadow: 0 4px 12px {PRIMARY_SOFT} !important;
+            color: {PRIMARY} !important;
+        }}
+
+
+        /* =====================================================
+           ACCESSIBILITY: visible focus indicator
+           (restores a clear :focus-visible outline so keyboard
+           navigation is obvious; mouse click styling unchanged)
+        ===================================================== */
+
+        button:focus-visible,
+        a:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible,
+        [data-testid="stBaseButton"]:focus-visible,
+        [data-testid="stChatInput"] *:focus-visible {{
+            outline: 2px solid {PRIMARY} !important;
+            outline-offset: 2px !important;
+            box-shadow: 0 0 0 3px {PRIMARY_SOFT} !important;
         }}
 
         </style>
@@ -693,7 +810,7 @@ def apply_theme():
                         const content = msg.querySelector('[data-testid="stChatMessageContent"]');
                         if (content) {
                             content.style.setProperty('background', '#F1F5F9', 'important');
-                            content.style.setProperty('border', '1px solid #E2E8F0', 'important');
+                            content.style.setProperty('border', '1px solid #E8EAEE', 'important');
                             content.style.setProperty('border-radius', '16px 16px 4px 16px', 'important');
                             content.style.setProperty('padding', '12px 16px', 'important');
                             content.style.setProperty('max-width', '70%', 'important');
@@ -704,10 +821,36 @@ def apply_theme():
             });
         }
 
+        function ensureSidebarBrand() {
+            const docs = [document, window.parent.document];
+            docs.forEach(doc => {
+                const content = doc.querySelector('[data-testid="stSidebarContent"]');
+                if (!content) return;
+                if (content.querySelector('.ia-brand')) return;
+                const nav = doc.querySelector('[data-testid="stSidebarNav"]');
+                const div = doc.createElement('div');
+                div.className = 'ia-brand';
+                div.innerHTML =
+                    '<div class="ia-brand-title">' +
+                    '<span class="ia-brand-mark">✦</span> Insight<span>AI</span>' +
+                    '</div>' +
+                    '<div class="ia-brand-subtitle">Business Intelligence</div>';
+                if (nav) content.insertBefore(div, nav);
+                else content.appendChild(div);
+            });
+        }
+
         forceAlignUserMessages();
-        const observer = new MutationObserver(forceAlignUserMessages);
+        ensureSidebarBrand();
+        const observer = new MutationObserver(() => {
+            forceAlignUserMessages();
+            ensureSidebarBrand();
+        });
         observer.observe(window.parent.document.body, { childList: true, subtree: true });
-        setInterval(forceAlignUserMessages, 1000);
+        setInterval(() => {
+            forceAlignUserMessages();
+            ensureSidebarBrand();
+        }, 1000);
         </script>
         """,
         unsafe_allow_html=True,
@@ -722,27 +865,46 @@ def section_label(text: str):
     st.markdown(f'<div class="sb-label">{text}</div>', unsafe_allow_html=True)
 
 
+def render_sidebar_brand():
+    st.markdown(
+        """
+        <div class="ia-brand">
+            <div class="ia-brand-title">
+                <span class="ia-brand-mark">✦</span> Insight<span>AI</span>
+            </div>
+            <div class="ia-brand-subtitle">Business Intelligence</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def confidence_badge_html(label: str, score: float) -> str:
+    label = html.escape(str(label))
+    score_txt = f"{score:.2f}"
     if label == "High":
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#10B981,#34D399);'
-            f'color:white;box-shadow:0 0 8px rgba(16,185,129,0.35);">'
-            f'{label} · {score:.2f}</span>'
+            f'color:white;box-shadow:inset 3px 0 0 #B8935A,0 0 8px rgba(16,185,129,0.35);'
+            f'font-family:\'IBM Plex Mono\',monospace;">'
+            f'{label} · {score_txt}</span>'
         )
     elif label == "Medium":
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#F59E0B,#FBBF24);'
-            f'color:white;">'
-            f'{label} · {score:.2f}</span>'
+            f'color:white;box-shadow:inset 3px 0 0 #B8935A;'
+            f'font-family:\'IBM Plex Mono\',monospace;">'
+            f'{label} · {score_txt}</span>'
         )
     else:
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#EF4444,#F87171);'
-            f'color:white;">'
-            f'{label} · {score:.2f}</span>'
+            f'color:white;box-shadow:inset 3px 0 0 #B8935A;'
+            f'font-family:\'IBM Plex Mono\',monospace;">'
+            f'{label} · {score_txt}</span>'
         )
 
 
@@ -774,12 +936,3 @@ def severity_icon(label: str) -> str:
 
 def mono(value: str) -> str:
     return f'<span class="mono-num">{value}</span>'
-
-
-def skeleton_loader():
-    st.markdown(
-        '<div class="skeleton-line" style="width:55%;"></div>'
-        '<div class="skeleton-line" style="width:90%;"></div>'
-        '<div class="skeleton-line" style="width:75%;"></div>',
-        unsafe_allow_html=True,
-    )

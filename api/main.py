@@ -15,7 +15,8 @@ from ingestion.vector_store import get_client, ensure_collection, upsert_chunks
 from ingestion.sparse import BM25Index
 from ingestion.embeddings import get_provider
 from agents.orchestrator.graph import build_orchestrator_graph
-from agents.agentic.agent import build_agent_tools, run_agentic_query
+from agents.agentic.agent import build_agent_tools
+from agents.agentic.graph_loop import run_agentic_query_v2
 from agents.orchestrator.confidence import compute_confidence
 from agents.orchestrator.critique import critique_answer
 from agents.orchestrator.synthesizer import detect_conflict
@@ -123,7 +124,7 @@ def query(req: QueryRequest):
         }
 
     elif req.mode == "agent":
-        agent_result = run_agentic_query(req.question, resources["agent_tools"])
+        agent_result = run_agentic_query_v2(req.question, resources["agent_tools"])
         answer = agent_result.get("answer")
         tool_calls_made = agent_result.get("tool_calls_made", [])
         iterations = agent_result.get("iterations", 0)

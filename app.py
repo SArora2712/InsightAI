@@ -6,23 +6,19 @@ import streamlit as st
 from core.theme2 import apply_theme
 
 st.set_page_config(
-    page_title="InsightAI",
+    page_title="InsightAI — Business Analyst Copilot",
+    page_icon="logo/favicon.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 st.markdown("""
 <style>
-    .block-container {
-        padding-top: 0.8rem !important;
-        padding-bottom: 0.5rem !important;
-        max-width: 100%;
-    }
-    header[data-testid="stHeader"] {
-        background: rgba(0,0,0,0);
-        height: 0px;
-    }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display: none;}
+    [data-testid="stToolbar"] {visibility: hidden;}
+    [data-testid="stDecoration"] {display: none;}
 </style>
 """, unsafe_allow_html=True)
 apply_theme()

@@ -1,6 +1,7 @@
 """
 InsightAI - History page (clean + 3-dot menu)
 """
+import html
 import streamlit as st
 from datetime import datetime
 
@@ -35,8 +36,8 @@ div[data-testid="stTextInput"] input {
     font-size: 14px !important;
 }
 div[data-testid="stTextInput"] input:focus {
-    border-color: #6366F1 !important;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+    border-color: #10203D !important;
+    box-shadow: 0 0 0 3px rgba(16,32,61,0.12) !important;
 }
 
 .result-count {
@@ -48,15 +49,16 @@ div[data-testid="stTextInput"] input:focus {
 /* Card */
 div[data-testid="stVerticalBlockBorderWrapper"] {
     background: #FFFFFF !important;
-    border: 1px solid #E8EAEE !important;
-    border-radius: 14px !important;
+    border: 1px solid #E4E7EC !important;
+    border-left: 3px solid #B8935A !important;
+    border-radius: 8px !important;
     box-shadow: 0 1px 2px rgba(16,24,40,0.04) !important;
     padding: 4px 6px 1px 6px !important;
     margin-bottom: 2px !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-    border-color: #C7D2FE !important;
-    box-shadow: 0 4px 14px rgba(79,70,229,0.08) !important;
+    border-color: #B8935A !important;
+    box-shadow: 0 4px 14px rgba(184,147,90,0.10) !important;
 }
 
 .hist-title {
@@ -107,8 +109,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 }
 
 /* 3-dot popover button */
-/* Bigger & cleaner 3-dot trigger */
-div[data-testid="stPopover"] > button {
+/* Bigger & cleaner 3-dot trigger, scoped to the history menus only */
+div[class*="st-key-menu_"] [data-testid="stPopover"] > button {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -119,21 +121,21 @@ div[data-testid="stPopover"] > button {
     min-height: 28px !important;
     line-height: 1 !important;
 }
-div[data-testid="stPopover"] > button:hover {
+div[class*="st-key-menu_"] [data-testid="stPopover"] > button:hover {
     background: #F1F5F9 !important;
     color: #111827 !important;
     border-radius: 6px !important;
 }
 
 /* Make the popover menu itself narrower + premium */
-div[data-testid="stPopover"] [data-testid="stVerticalBlock"] {
+div[class*="st-key-menu_"] [data-testid="stPopover"] [data-testid="stVerticalBlock"] {
     min-width: 110px !important;
     max-width: 130px !important;
     padding: 4px !important;
 }
 
 /* Menu buttons - smaller and tighter */
-div[data-testid="stPopover"] button[kind="secondary"] {
+div[class*="st-key-menu_"] [data-testid="stPopover"] button[kind="secondary"] {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -147,7 +149,7 @@ div[data-testid="stPopover"] button[kind="secondary"] {
     border-radius: 6px !important;
     width: 100% !important;
 }
-div[data-testid="stPopover"] button[kind="secondary"]:hover {
+div[class*="st-key-menu_"] [data-testid="stPopover"] button[kind="secondary"]:hover {
     background: #F1F5F9 !important;
 }
 
@@ -236,7 +238,7 @@ for conv in conversations:
     except Exception:
         updated_display = updated_raw[:10] if updated_raw else "—"
 
-    safe_title = (conv.get("title") or "Untitled").replace("$", "\\$")
+    safe_title = html.escape(conv.get("title") or "Untitled").replace("$", "\\$")
     conv_id = conv["id"]
 
     with st.container(border=True):
@@ -269,7 +271,7 @@ for conv in conversations:
                 )
 
         with col_menu:
-            with st.popover("⋮"):
+            with st.popover("⋮", key=f"menu_{conv_id}"):
                 if st.button("Open", key=f"open_{conv_id}", use_container_width=True):
                     st.session_state.conversation_id = conv_id
                     st.session_state.messages = messages

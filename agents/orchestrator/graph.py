@@ -35,8 +35,12 @@ class OrchestratorState(TypedDict):
     critique:Optional[dict]
 
 def router_node(state: OrchestratorState) -> OrchestratorState:
-    llm_tracker.record_call()  
-    agents_needed = route_question(state["query"])
+    llm_tracker.record_call()
+    try:
+        agents_needed = route_question(state["query"])
+    except Exception as e:
+        print(f"[orchestrator] Router failed ({type(e).__name__}), defaulting to all agents: {e}")
+        agents_needed = list(VALID_AGENTS)
     print(f"[orchestrator] Routing to: {agents_needed}")
     return {"agents_needed": agents_needed}
 
@@ -65,29 +69,55 @@ def out_of_scope_node(state: OrchestratorState) -> OrchestratorState:
         "critique": {"has_issues": False, "severity": "none", "findings": [], "verdict": "N/A — out of scope"},
     }
 def confidence_and_critique_node(state: OrchestratorState) -> OrchestratorState:
-    confidence = compute_confidence(
-        state.get("conflict_detected", False),
-        state.get("rag_result"), state.get("sql_result"), state.get("web_result"),
-    )
-    critique = critique_answer(
-        state["query"], state["final_answer"],
-        state.get("rag_result"), state.get("sql_result"), state.get("web_result"),
-    )
+    try:
+        confidence = compute_confidence(
+            state.get("conflict_detected", False),
+            state.get("rag_result"), state.get("sql_result"), state.get("web_result"),
+        )
+    except Exception:
+        confidence = {
+            "score": 0.0, "label": "Low",
+            "reasons": ["Confidence could not be computed for this answer."],
+        }
+
+    try:
+        critique = critique_answer(
+            state["query"], state["final_answer"],
+            state.get("rag_result"), state.get("sql_result"), state.get("web_result"),
+        )
+    except Exception:
+        critique = {
+            "has_issues": False, "severity": "none",
+            "findings": [], "verdict": "Critique unavailable for this answer.",
+        }
+
     return {"confidence": confidence, "critique": critique}
 
 def synthesis_node(state: OrchestratorState) -> OrchestratorState:
-    result = synthesize_final_answer(
-        state["query"],
-        state.get("rag_result"),
-        state.get("sql_result"),
-        state.get("web_result"),
-    )
+    try:
+        result = synthesize_final_answer(
+            state["query"],
+            state.get("rag_result"),
+            state.get("sql_result"),
+            state.get("web_result"),
+        )
+        answer = result.get("answer")
+        conflict_detected = result.get("conflict_detected", False)
+        conflict_summary = result.get("conflict_summary")
+    except Exception:
+        answer = (
+            "I hit a temporary problem while preparing the analysis. "
+            "The retrieved results were received, but the final answer "
+            "could not be composed. Please try again."
+        )
+        conflict_detected = False
+        conflict_summary = None
 
-    result["answer"] = ensure_prose(result["answer"], state["query"]) 
+    answer = ensure_prose(answer, state["query"]) if answer else answer
     return {
-        "final_answer": result["answer"],
-        "conflict_detected": result["conflict_detected"],
-        "conflict_summary": result["conflict_summary"],
+        "final_answer": answer,
+        "conflict_detected": conflict_detected,
+        "conflict_summary": conflict_summary,
     }
 
 
@@ -97,15 +127,36 @@ def build_orchestrator_graph(bm25,provider, qdrant_client):
     rag_subgraph = build_document_rag_graph(bm25, provider, qdrant_client)
 
     def rag_agent_node(state: OrchestratorState) -> OrchestratorState:
-        rag_output = rag_subgraph.invoke({"query": state["query"], "retrieved_chunks": [], "answer": ""})
-        return {"rag_result": rag_output} 
+        try:
+            rag_output = rag_subgraph.invoke({"query": state["query"], "retrieved_chunks": [], "answer": ""})
+            return {"rag_result": rag_output}
+        except Exception as e:
+            print(f"[orchestrator] Document RAG failed ({type(e).__name__}): {e}")
+            return {"rag_result": {"answer": "", "error": str(e)}}
+
+
+    def guarded_sql_node(state: OrchestratorState) -> OrchestratorState:
+        try:
+            return sql_agent_node(state)
+        except Exception as e:
+            print(f"[orchestrator] SQL agent failed ({type(e).__name__}): {e}")
+            return {"sql_result": {"question": state["query"], "rows": [], "columns": [],
+                                   "row_count": 0, "error": str(e)}}
+
+
+    def guarded_web_node(state: OrchestratorState) -> OrchestratorState:
+        try:
+            return web_agent_node(state)
+        except Exception as e:
+            print(f"[orchestrator] Web agent failed ({type(e).__name__}): {e}")
+            return {"web_result": {"answer": "", "error": str(e)}}
 
 
     graph = StateGraph(OrchestratorState)
     graph.add_node("router", router_node)
     graph.add_node("rag_agent", rag_agent_node)
-    graph.add_node("sql_agent", sql_agent_node)
-    graph.add_node("web_agent", web_agent_node)
+    graph.add_node("sql_agent", guarded_sql_node)
+    graph.add_node("web_agent", guarded_web_node)
     graph.add_node("out_of_scope", out_of_scope_node)
     graph.add_node("merge", merge_node)
     graph.add_node("synthesize", synthesis_node) 

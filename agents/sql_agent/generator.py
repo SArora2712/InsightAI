@@ -56,12 +56,24 @@ def run_sql_agent(question: str) -> dict:
     last_error = None
     for attempt in range(1, MAX_RETRIES + 2):
         if attempt == 1:
-            raw_output = call_llm(system_prompt, prompt)              # <- use system_prompt, not SQL_SYSTEM_PROMPT
+            try:
+                raw_output = call_llm(system_prompt, prompt)
+            except Exception as e:
+                last_error = f"LLM call failed: {type(e).__name__}: {e}"
+                continue
         else:
             retry_prompt = build_retry_prompt(question, schema_context, last_sql, last_error)
-            raw_output = call_llm(system_prompt, retry_prompt)    
+            try:
+                raw_output = call_llm(system_prompt, retry_prompt)
+            except Exception as e:
+                last_error = f"LLM call failed on retry {attempt}: {type(e).__name__}: {e}"
+                continue
 
-        sql = _extract_sql(raw_output)
+        try:
+            sql = _extract_sql(raw_output)
+        except ValueError as e:
+            last_error = str(e)
+            continue
         last_sql = sql
 
         try:

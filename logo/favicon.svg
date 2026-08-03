@@ -1,0 +1,13 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<style>
+  .navy { fill: #10203D; }
+  .gold { fill: #B8935A; }
+</style>
+</defs>
+<rect x="10" y="10" width="180" height="180" rx="34" class="navy"/>
+<rect x="62" y="112" width="22" height="48" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<rect x="94" y="86" width="22" height="74" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<rect x="126" y="52" width="22" height="108" rx="4" fill="#FFFFFF" opacity="0.92"/>
+<circle cx="148" cy="40" r="11" class="gold"/>
+</svg>

@@ -3,16 +3,17 @@ InsightAI - Dashboard page. Real metrics only: SQL totals, confidence/conflict
 stats derived from actual saved conversations, live document chunk count.
 """
 import hashlib
+import html
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer
+from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer, INFO, PRIMARY
 from core.history import list_conversations, load_conversation_messages
 from agents.sql_agent.executor import execute_sql
 from core.setup import setup_resources
 
-st.set_page_config(page_title="InsightAI - Dashboard", page_icon="📊", layout="wide")
+st.set_page_config(page_title="InsightAI - Dashboard", page_icon="logo/favicon.png", layout="wide")
 apply_theme()
 
 
@@ -51,18 +52,16 @@ def empty_state(message: str):
 PLOTLY_CONFIG = {
     "displayModeBar": True,
     "displaylogo": False,
-    "modeBarButtonsToRemove": [
-        "zoom2d", "pan2d", "select2d", "lasso2d",
-        "autoScale2d", "toImage", "zoomIn2d", "zoomOut2d"
-    ],
-    "scrollZoom": True,
+    "displayModeBar": False,
+    "scrollZoom": False,
 }
 
+PLOTLY_COLORS = ["#10203D", "#B8935A", "#5A8B8C"]
+
 PLOTLY_LAYOUT_BASE = dict(
-    
     margin=dict(l=10, r=10, t=12, b=10),
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="#F7F8FA",
+    paper_bgcolor="#F7F8FA",
     font=dict(family="Inter"),
 )
 
@@ -94,13 +93,16 @@ def get_revenue_by_category():
     return pd.DataFrame(result["rows"])
 
 
-def get_history_analytics():
-    """Single pass over saved history - feeds confidence trend, source
-    usage, and query volume charts without scanning history three times."""
+@st.cache_data(ttl=30)
+def get_dashboard_stats():
+    """Single pass over saved history: feeds avg confidence, conflict count,
+    confidence trend, source usage, and query volume without scanning history
+    multiple times or re-opening the DB per metric."""
     conversations = list_conversations(limit=50)
     confidence_points = []
     source_counts = {"SQL": 0, "Docs": 0, "Web": 0}
     daily_counts = {}
+    scores, conflicts = [], 0
     tag_map = {
         "query_sales_database": "SQL", "sql": "SQL",
         "search_internal_documents": "Docs", "document_rag": "Docs",
@@ -115,8 +117,14 @@ def get_history_analytics():
             created_at = msg.get("created_at")
 
             confidence = meta.get("confidence") or {}
-            if confidence.get("score") is not None and created_at:
-                confidence_points.append((created_at, confidence["score"]))
+            score = confidence.get("score")
+            if score is not None:
+                scores.append(score)
+                if created_at:
+                    confidence_points.append((created_at, score))
+
+            if meta.get("conflict_detected"):
+                conflicts += 1
 
             sources = set()
             for step in meta.get("tool_trace", []):
@@ -133,24 +141,15 @@ def get_history_analytics():
                 daily_counts[day] = daily_counts.get(day, 0) + 1
 
     confidence_points.sort(key=lambda x: x[0])
-    return confidence_points, source_counts, daily_counts
-
-
-def get_confidence_and_conflict_stats():
-    conversations = list_conversations(limit=20)
-    scores, conflicts = [], 0
-    for conv in conversations:
-        for msg in load_conversation_messages(conv["id"]):
-            meta = msg.get("meta")
-            if not meta:
-                continue
-            confidence = meta.get("confidence") or {}
-            if confidence.get("score") is not None:
-                scores.append(confidence["score"])
-            if meta.get("conflict_detected"):
-                conflicts += 1
     avg_confidence = sum(scores) / len(scores) if scores else None
-    return avg_confidence, conflicts, len(scores)
+    return {
+        "avg_confidence": avg_confidence,
+        "conflict_count": conflicts,
+        "sample_size": len(scores),
+        "confidence_points": confidence_points,
+        "source_counts": source_counts,
+        "daily_counts": daily_counts,
+    }
 
 
 def confidence_label_from_score(score: float) -> str:
@@ -164,9 +163,15 @@ def confidence_label_from_score(score: float) -> str:
 # ---------------------------------------------------------------------------
 # Metrics row
 # ---------------------------------------------------------------------------
-revenue, order_count = get_total_revenue()
-avg_confidence, conflict_count, sample_size = get_confidence_and_conflict_stats()
-confidence_points, source_counts, daily_counts = get_history_analytics()
+with st.spinner("Loading dashboard data..."):
+    revenue, order_count = get_total_revenue()
+    stats = get_dashboard_stats()
+    avg_confidence = stats["avg_confidence"]
+    conflict_count = stats["conflict_count"]
+    sample_size = stats["sample_size"]
+    confidence_points = stats["confidence_points"]
+    source_counts = stats["source_counts"]
+    daily_counts = stats["daily_counts"]
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -178,12 +183,9 @@ with col2:
     else:
         st.metric("Avg confidence", "—", "No queries yet")
 with col3:
-    st.metric("Conflicts flagged", str(conflict_count))
-    st.caption("This session")
+    st.metric("Conflicts flagged", str(conflict_count), "This session")
 with col4:
-    st.metric("Documents indexed", str(chunk_count))
-    st.caption("chunks")
-
+    st.metric("Documents indexed", str(chunk_count), "chunks")
 spacer("lg")
 
 # ---------------------------------------------------------------------------
@@ -200,7 +202,7 @@ with row1_col1:
                 x=df["revenue"],
                 y=df["category"],
                 orientation="h",
-                marker=dict(color="#6366F1", line=dict(width=0)),
+                marker=dict(color=INFO, line=dict(width=0)),
                 text=[f"${v/1_000_000:.1f}M" for v in df["revenue"]],
                 textposition="outside",
                 textfont=dict(size=12, color="#374151", family="Inter"),
@@ -210,8 +212,8 @@ with row1_col1:
             fig.update_layout(
                 height=340,                          # slightly taller for breathing room
                 margin=dict(l=8, r=95, t=10, b=10),  # more right margin for labels
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="#F7F8FA",
+                paper_bgcolor="#F7F8FA",
                 showlegend=False,
                 xaxis=dict(
                     showgrid=True,
@@ -238,28 +240,18 @@ with row1_col2:
         df_conf = pd.DataFrame(confidence_points, columns=["time", "score"])
         df_conf["time"] = pd.to_datetime(df_conf["time"])
 
-        # Simple 3-point moving average for smoother visual
+        # Simple 3-point moving average for a clean trend line
         df_conf["smooth"] = df_conf["score"].rolling(window=3, min_periods=1, center=True).mean()
 
         fig2 = go.Figure()
 
-        # Raw points (subtle)
-        fig2.add_trace(go.Scatter(
-            x=df_conf["time"],
-            y=df_conf["score"],
-            mode="markers",
-            marker=dict(size=5, color="rgba(99,102,241,0.45)"),
-            hovertemplate="%{x|%b %d, %H:%M}<br>Confidence: %{y:.2f}<extra></extra>",
-            name="Actual",
-        ))
-
-        # Smoothed line
+        # Clean trend line only (no raw scatter dots)
         fig2.add_trace(go.Scatter(
             x=df_conf["time"],
             y=df_conf["smooth"],
             mode="lines",
-            line=dict(color="#6366F1", width=2.5),
-            hoverinfo="skip",
+            line=dict(color=INFO, width=2.5),
+            hovertemplate="%{x|%b %d, %H:%M}<br>Confidence: %{y:.2f}<extra></extra>",
             name="Trend",
         ))
 
@@ -293,14 +285,14 @@ with row2_col1:
             labels=list(source_counts.keys()),
             values=list(source_counts.values()),
             hole=0.62,
-            marker=dict(colors=["#4F46E5", "#06B6D4", "#8B5CF6"]),
+            marker=dict(colors=PLOTLY_COLORS),
             textfont=dict(size=12, family="Inter"),
             hovertemplate="%{label}: %{value} (%{percent})<extra></extra>",
         ))
         fig3.update_layout(
             height=340,
             margin=dict(l=10, r=10, t=12, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="#F7F8FA",
             showlegend=True,
             legend=dict(
                 orientation="h",
@@ -320,7 +312,7 @@ with row2_col2:
         fig4 = go.Figure(go.Bar(
             x=df_daily["day"],
             y=df_daily["count"],
-            marker=dict(color="#06B6D4", line=dict(width=0)),
+            marker=dict(color=PLOTLY_COLORS[0], line=dict(width=0)),
             hovertemplate="%{x}<br>%{y} queries<extra></extra>",
         ))
         fig4.update_layout(
@@ -364,7 +356,7 @@ else:
             score = confidence.get("score", 0.0)
 
             raw_content = last_assistant_msg.get("content", "")
-            title = conv.get("title", "Untitled")
+            title = html.escape(conv.get("title", "Untitled"))
 
             # Deduplication key: title + first 120 chars of content
             dedupe_key = f"{title}::{raw_content[:120]}".lower().strip()
@@ -375,7 +367,7 @@ else:
             seen_hashes.add(content_hash)
 
             snippet = raw_content[:160].strip() + ("..." if len(raw_content) > 160 else "")
-            snippet_escaped = snippet.replace("$", "\\$")
+            snippet_escaped = html.escape(snippet).replace("$", "\\$")
 
             sources = set()
             for step in meta.get("tool_trace", []):
@@ -397,7 +389,7 @@ else:
                 <div style="
                     background: #FFFFFF;
                     border: 1px solid #E2E8F0;
-                    border-left: 4px solid #6366F1;
+                    border-left: 4px solid {INFO};
                     border-radius: 14px;
                     padding: 16px 18px;
                     margin-bottom: 14px;

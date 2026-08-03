@@ -41,6 +41,26 @@ MAX_LLM_CALLS_PER_QUERY = 15
 MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 2.0
 
+# Exact-match TTL cache for LLM responses. Keyed by the full prompt pair, so it
+# only ever returns a cached result for an identical repeat call (e.g. a re-run
+# of the same script or a repeated "Generate report"), never for a novel query.
+# Returning from cache also skips the per-query call budget, which is the point
+# of the cache - it saves both cost and the circuit-breaker headroom.
+_LLM_CACHE: dict = {}
+_LLM_CACHE_TTL_SECONDS = 300
+_LLM_CACHE_MAX_ENTRIES = 128
+
+
+def _llm_cache_get(key: tuple) -> str | None:
+    cached = _LLM_CACHE.get(key)
+    if cached is None:
+        return None
+    ts, value = cached
+    if time.time() - ts < _LLM_CACHE_TTL_SECONDS:
+        return value
+    _LLM_CACHE.pop(key, None)
+    return None
+
 
 def _can_make_llm_call() -> bool:
     """
@@ -138,6 +158,12 @@ def call_llm(
             "Add your key to .env to see actual model output.]"
         )
 
+    cache_key = (system_prompt, user_prompt, temperature, max_tokens)
+    cached_value = _llm_cache_get(cache_key)
+    if cached_value is not None:
+        print("[llm_client] Returning cached LLM response (exact-match hit).")
+        return cached_value
+
     kwargs = {}
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
@@ -154,7 +180,11 @@ def call_llm(
                 **kwargs,
             )
             llm_tracker.record_call()
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            _LLM_CACHE[cache_key] = (time.time(), content)
+            if len(_LLM_CACHE) > _LLM_CACHE_MAX_ENTRIES:
+                _LLM_CACHE.clear()
+            return content
 
         except Exception as e:
             if not _is_retryable_error(e):

@@ -3,6 +3,11 @@ InsightAI - Live demo script (Workflow mode, demo-hardened question set).
 Agent mode exists and works but is shown separately/verbally as the
 architecture evolution story - not driven live with unscripted questions yet.
 """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from ingestion.parser import parse_directory
 from ingestion.chunker import chunk_document
 from ingestion.vector_store import get_client, ensure_collection, upsert_chunks

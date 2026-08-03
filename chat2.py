@@ -3,6 +3,7 @@ InsightAI - Chat page (Workflow v1 / Agent v2). Page config and navigation
 are owned centrally by app.py - this file only renders when st.navigation
 routes to it.
 """
+import html
 import streamlit as st
 
 from ingestion.parser import parse_directory
@@ -118,7 +119,7 @@ def safe_markdown(text: str):
     st.markdown(text.replace("$", "\\$"))
 
 
-def render_chip_row(meta: dict):
+def render_chip_row(meta: dict, key: str = "chip"):
     """Single horizontal row of compact chips. Plain-text spans for
     non-interactive chips; real st.popover(icon=...) for interactive ones -
     icon= is a dedicated Streamlit parameter that reliably renders Material
@@ -188,7 +189,7 @@ def render_chip_row(meta: dict):
     if total_chips == 0:
         return
 
-    with st.container(key=f"chip_row_{id(meta)}"):
+    with st.container(key=f"chip_row_{key}"):
         cols = st.columns(total_chips)
         col_idx = 0
 
@@ -224,8 +225,9 @@ def render_chip_row(meta: dict):
         )
 
 
-def render_assistant_message(answer: str, meta: dict):
+def render_assistant_message(answer: str, meta: dict, key: str = "msg"):
     is_error = bool((meta or {}).get("is_error"))
+    answer_esc = html.escape(answer or "")
 
     if is_error:
         st.markdown(
@@ -241,7 +243,7 @@ def render_assistant_message(answer: str, meta: dict):
                 <div style="font-weight:600;color:#B91C1C;margin-bottom:4px;">
                     ⚠ Processing failed
                 </div>
-                <div style="color:#7F1D1D;">{answer}</div>
+                <div style="color:#7F1D1D;">{answer_esc}</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -258,29 +260,16 @@ def render_assistant_message(answer: str, meta: dict):
                 margin-bottom:6px;
             ">
                 <div style="font-size:14.5px;line-height:1.65;color:#1E293B;">
-                    {answer}
+                    {answer_esc}
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-    render_chip_row(meta)
+    render_chip_row(meta, key=f"chip_{key}")
 
 with st.sidebar:
-
-    # Brand (only once)
-    st.markdown(
-        """
-        <div class="ia-brand">
-            <div class="ia-brand-title">
-                <span class="ia-brand-mark">✦</span> Insight<span>AI</span>
-            </div>
-            <div class="ia-brand-subtitle">Business Intelligence</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
     # New analysis
     if st.button(
@@ -428,10 +417,10 @@ else:
     
 AVATARS = {"user": ":material/person:", "assistant": ":material/auto_awesome:"}
 
-for msg in st.session_state.messages:
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"], avatar=AVATARS.get(msg["role"])):
         if msg["role"] == "assistant":
-            render_assistant_message(msg["content"], msg.get("meta"))
+            render_assistant_message(msg["content"], msg.get("meta"), key=f"msg_{i}")
         else:
             safe_markdown(msg["content"])
 
@@ -456,6 +445,8 @@ if prompt:
                 else:
                     answer, meta = run_agent_query(prompt, agent_tools)
             except Exception as e:
+                import traceback
+                traceback.print_exc()  # surface the real failure on the terminal
                 answer = "I encountered an error while processing your question."
                 meta = {
                     "mode": mode, "tool_trace": [], "is_error": True,
@@ -465,7 +456,7 @@ if prompt:
                     },
                     "critique": {
                         "has_issues": True, "severity": "high",
-                        "findings": [str(e)] if DEBUG_MODE else ["An internal error occurred."],
+                        "findings": [f"{type(e).__name__}: {e}", "The query could not be completed because an internal error occurred."],
                         "verdict": "The system failed to generate a reliable answer.",
                     },
                 }
@@ -473,7 +464,7 @@ if prompt:
                     with st.expander("Show technical details"):
                         st.exception(e)
 
-        render_assistant_message(answer, meta)
+        render_assistant_message(answer, meta, key=f"msg_{len(st.session_state.messages)}")
         st.session_state.messages.append({"role": "assistant", "content": answer, "meta": meta})
 
     save_message(st.session_state.conversation_id, "assistant", answer, meta)

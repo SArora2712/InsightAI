@@ -10,11 +10,11 @@ from core.theme2 import apply_theme, banner_html, spacer
 # Adjust this import to the actual module path for run_decision_simulator
 from agents.simulator.decision_simulator import run_decision_simulator
 
-st.set_page_config(page_title="InsightAI - Simulator", page_icon="📊", layout="wide")
+st.set_page_config(page_title="InsightAI - Simulator", page_icon="logo/favicon.png", layout="wide")
 apply_theme()
 
-st.title("What-if simulator")
-st.caption("Straight-line projections from real current data — no elasticity modeled")
+st.title("Simulator")
+st.caption("What-if projections from real current data — no elasticity modeled")
 
 if "simulator_history" not in st.session_state:
     st.session_state.simulator_history = []
@@ -57,8 +57,9 @@ if st.session_state.simulator_history:
         with col3:
             st.metric("Current avg. unit price", f"${computed['current_avg_price']:.2f}")
 
-        st.markdown("##### Analysis")
-        st.markdown(latest["answer"].replace("$", "\\$"))
+        with st.container(border=True):
+            st.markdown("##### Analysis")
+            st.markdown(latest["answer"].replace("$", "\\$"))
 
         # Previously an inline-styled <div> with hardcoded hex colors that
         # duplicated (and could drift from) theme.py's AMBER tokens. Now

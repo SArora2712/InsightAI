@@ -1,5 +1,10 @@
 # test_tools.py
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from core.llm_client import call_llm_with_tools
 from agents.agentic.tools_schema import TOOLS_SCHEMA
 

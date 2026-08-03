@@ -58,19 +58,21 @@ def _get_category_baseline(target: str) -> dict | None:
         sql = """SELECT SUM(OD.UnitPrice * OD.Quantity * (1 - OD.Discount)) AS Revenue,
                          SUM(OD.Quantity) AS Quantity
                   FROM "Order Details" OD"""
+        params = None
     else:
         sql = f"""SELECT SUM(OD.UnitPrice * OD.Quantity * (1 - OD.Discount)) AS Revenue,
                          SUM(OD.Quantity) AS Quantity
                   FROM "Order Details" OD
                   JOIN Products P ON OD.ProductID = P.ProductID
                   JOIN Categories C ON P.CategoryID = C.CategoryID
-                  WHERE C.CategoryName = '{target}'"""
+                  WHERE C.CategoryName = ?"""
+        params = (target,)
     try:
         validated = validate_sql(sql)
     except SQLValidationError:
         return None
     try:
-        result = execute_sql(validated)
+        result = execute_sql(validated, params=params)
     except Exception:
         return None
     if not result["rows"] or result["rows"][0]["Revenue"] is None:
@@ -97,6 +99,11 @@ def run_decision_simulator(question: str) -> dict:
     if not scenario.get("metric") or not scenario.get("target"):
         return {"question": question, "answer": None, "scenario": None, "computed": None,
                  "error": "Could not parse this as a numeric what-if scenario about price or quantity."}
+
+    change_percent = scenario.get("change_percent")
+    if not isinstance(change_percent, (int, float)) or isinstance(change_percent, bool):
+        return {"question": question, "answer": None, "scenario": scenario, "computed": None,
+                 "error": "Could not read the percentage change from your scenario. Please use a number, e.g. -10 or +15."}
 
     baseline = _get_category_baseline(scenario["target"])
     if baseline is None:

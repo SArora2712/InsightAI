@@ -1,13 +1,15 @@
 """
 InsightAI - Executive Report page.
 """
+import html
+
 import streamlit as st
 
 from core.theme2 import apply_theme, confidence_badge_html, spacer
 from core.setup import setup_resources
 from core.report_generator import generate_executive_report
 
-st.set_page_config(page_title="InsightAI - Executive Report", page_icon="📊", layout="wide")
+st.set_page_config(page_title="InsightAI - Executive Report", page_icon="logo/favicon.png", layout="wide")
 apply_theme()
 
 try:
@@ -56,17 +58,17 @@ spacer("md")
 
 # ===== Executive Summary =====
 st.markdown("##### Executive summary")
-summary = report["summary"].replace("$", r"\$")
+summary = html.escape(report["summary"] or "").replace("$", r"\$")
 
 st.markdown(
     f"""
     <div style="
         background: #FFFFFF;
-        border: 1px solid #E0E7FF;
-        border-left: 4px solid #6366F1;
+        border: 1px solid #E8EAEE;
+        border-left: 4px solid #10203D;
         border-radius: 14px;
         padding: 18px 20px;
-        box-shadow: 0 2px 12px rgba(99,102,241,0.06);
+        box-shadow: 0 2px 12px rgba(16,32,61,0.06);
         margin-bottom: 8px;
     ">
         <div style="font-size:14.5px; line-height:1.65; color:#1E293B;">
@@ -90,8 +92,8 @@ for f in report["findings"]:
         f"""
         <div style="
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-left: 4px solid #6366F1;
+            border: 1px solid #E8EAEE;
+            border-left: 4px solid #10203D;
             border-radius: 14px;
             padding: 16px 18px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.03);
@@ -134,7 +136,7 @@ spacer("lg")
 st.markdown("##### Recommendations")
 
 # Split recommendations into numbered items if possible
-recs = report["recommendations"].replace("$", r"\$")
+recs = html.escape(report["recommendations"] or "").replace("$", r"\$")
 
 st.markdown(
     f"""

@@ -185,13 +185,6 @@ def _parse_reconciler_output(raw_output: str, fallback_text: str) -> dict:
 def synthesize_final_answer(question: str, rag_result: dict, sql_result: dict, web_result: dict) -> dict:
     context = _format_available_results(rag_result, sql_result, web_result)
 
-    conflict_info = detect_conflict(rag_result, sql_result, web_result)
-
-    if conflict_info["conflict_detected"]:
-        conflict_note = f'A conflict WAS detected between sources: {conflict_info["conflict_summary"]}'
-    else:
-        conflict_note = "No conflict was detected between sources."
-
     prompt = f"""Available results:
 
 {context}
@@ -200,16 +193,21 @@ def synthesize_final_answer(question: str, rag_result: dict, sql_result: dict, w
 
 User's question: {question}
 
-{conflict_note}
+Analyze the sources for conflicts and write the final answer now."""
 
-Write the answer now."""
+    raw_output = call_llm(RECONCILER_SYSTEM_PROMPT, prompt)
 
-    answer = call_llm(ANSWER_ONLY_SYSTEM_PROMPT, prompt)
+    def fallback():
+        # If the LLM can't produce structured JSON, degrade to a plain answer
+        # without staging a conflict claim (does not crash the pipeline).
+        return {"conflict_detected": False, "conflict_summary": None, "answer": raw_output or ""}
+
+    parsed = _parse_reconciler_output(raw_output or "", raw_output or "") if raw_output else fallback()
 
     return {
-        "answer": answer,
-        "conflict_detected": conflict_info["conflict_detected"],
-        "conflict_summary": conflict_info["conflict_summary"],
+        "answer": parsed["answer"],
+        "conflict_detected": parsed["conflict_detected"],
+        "conflict_summary": parsed["conflict_summary"],
     }
 def detect_conflict(rag_result: dict, sql_result: dict, web_result: dict) -> dict:
 
