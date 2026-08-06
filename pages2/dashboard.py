@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer, INFO, PRIMARY
+from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer, INFO, PRIMARY,small_logo_html
 from core.history import list_conversations, load_conversation_messages
 from agents.sql_agent.executor import execute_sql
 from core.setup import setup_resources
@@ -16,6 +16,8 @@ from core.setup import setup_resources
 st.set_page_config(page_title="InsightAI - Dashboard", page_icon="logo/favicon.png", layout="wide")
 apply_theme()
 
+
+st.markdown(small_logo_html(), unsafe_allow_html=True)
 
 try:
     _, _, chunk_count = setup_resources()

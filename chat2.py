@@ -30,7 +30,7 @@ from core.history import (
 )
 from core.llm_client import llm_tracker
 from core.setup import setup_resources
-from core.theme2 import apply_theme, severity_icon, section_label
+from core.theme2 import apply_theme, severity_icon, section_label, app_logo_svg
 
 DEBUG_MODE = False
 
@@ -361,9 +361,49 @@ with st.sidebar:
     ):
         st.info("Help center will be available soon.")
 
-st.title("InsightAI")
-st.caption(f"Mode: **{mode}**")
+if "conversation_id" not in st.session_state:
+    st.session_state.conversation_id = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
+_empty = not st.session_state.messages
+
+if _empty:
+    badge = mode
+
+    logo_svg = '''
+    <svg xmlns="http://www.w3.org/2000/svg" width="340" height="88" viewBox="0 0 420 110" fill="none">
+      <rect x="6" y="52" width="16" height="38" rx="3" fill="#0F172A"/>
+      <rect x="28" y="34" width="16" height="56" rx="3" fill="#0F172A"/>
+      <rect x="50" y="16" width="16" height="74" rx="3" fill="#0F172A"/>
+      <path d="M10 66 L72 20" stroke="#14B8A6" stroke-width="6.5" stroke-linecap="round"/>
+      <circle cx="72" cy="20" r="7.5" fill="#14B8A6"/>
+      <text x="100" y="72" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" letter-spacing="-1.5">
+        <tspan fill="#0F172A">Insight</tspan><tspan fill="#14B8A6">AI</tspan>
+      </text>
+    </svg>
+    '''
+
+    hero_html = f"""
+    <div class="ia-hero" style="padding: 28px 0 20px 0;">
+      <div class="ia-logo" style="margin-bottom: 6px;">
+        {logo_svg}
+      </div>
+      <div class="ia-hero-sub" style="margin-top: 4px; font-size: 16px;">
+        Business Analytics Copilot
+      </div>
+      <div class="ia-hero-desc" style="margin-top: 10px; max-width: 580px;">
+        InsightAI routes your question across structured data, business reports
+        and the web to the best AI workflow, then explains its confidence in every answer.
+      </div>
+      <span class="ia-badge" style="margin-top: 16px;">{badge}</span>
+      <div class="ia-hero-welcome" style="margin-top: 28px; padding-top: 20px;">
+        <div class="ia-hero-welcome-title">Welcome back</div>
+        <div class="ia-hero-welcome-sub">Ask InsightAI anything about your business</div>
+      </div>
+    </div>
+    """
+    st.markdown(hero_html, unsafe_allow_html=True)
 try:
     workflow_app, agent_tools, chunk_count = setup_resources()
     st.sidebar.success(f"Indexed {chunk_count} document chunks")
@@ -376,31 +416,7 @@ except Exception as e:
         st.caption("Contact support if this keeps happening.")
     st.stop()
 
-if "conversation_id" not in st.session_state:
-    st.session_state.conversation_id = None
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
 if not st.session_state.messages:
-    st.markdown(
-        """
-        <div style="
-            text-align: center;
-            padding: 28px 20px 18px;
-            margin: 12px 0 20px;
-        ">
-            <div style="font-size:16px;font-weight:600;color:#0F172A;margin-bottom:6px;">
-                Ask InsightAI a question
-            </div>
-            <div style="font-size:13.5px;color:#64748B;max-width:520px;margin:0 auto;line-height:1.5;">
-                It will route your question to sales data, internal reports, or the web,
-                then show its confidence in the answer.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     example_cols = st.columns(3, gap="medium")
     examples = [
         "What was total revenue by category?",

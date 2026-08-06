@@ -1,10 +1,11 @@
 """
 InsightAI - Shared theme, injected on every page.
 Design direction: light navy sidebar, light elevated canvas,
-navy + gold brand palette (gold = small accents only).
+navy + teal brand palette (teal = small accents only).
 """
 
 import html
+import pathlib
 import streamlit as st
 
 
@@ -22,8 +23,8 @@ SIDEBAR_TEXT_DIM    = "#6B7280"
 SIDEBAR_CARD        = "#111827"
 SIDEBAR_CARD_HOVER  = "#172033"
 SIDEBAR_BORDER      = "rgba(255,255,255,0.07)"
-SIDEBAR_ACCENT      = "#B8935A"
-SIDEBAR_ACCENT_BG   = "rgba(184,147,90,0.16)"
+SIDEBAR_ACCENT      = "#14B8A6"
+SIDEBAR_ACCENT_BG   = "rgba(20,184,166,0.16)"
 SIDEBAR_MUTED       = "#64748B"
 
 BG                  = "#F7F8FA"
@@ -36,8 +37,8 @@ PRIMARY_HOVER       = "#1B2E55"
 PRIMARY_BG          = "#EEF1F6"
 PRIMARY_SOFT        = "rgba(16,32,61,0.12)"
 
-GOLD                = "#B8935A"
-GOLD_SOFT           = "rgba(184,147,90,0.18)"
+GOLD                = "#14B8A6"          # teal accent
+GOLD_SOFT           = "rgba(20,184,166,0.18)"
 
 TEXT_PRIMARY        = "#10203D"
 TEXT_SECONDARY      = "#5A6472"
@@ -136,8 +137,8 @@ def apply_theme():
         }}
 
         .block-container {{
-            padding-top: 2rem !important;
-            padding-bottom: 3rem !important;
+            padding-top: 1.25rem !important;
+            padding-bottom: 2.5rem !important;
             padding-left: 3rem !important;
             padding-right: 3rem !important;
             height: auto !important;
@@ -157,7 +158,7 @@ def apply_theme():
         }}
 
         /* =====================================================
-           ALERTS (st.info / st.warning / st.error / st.success)
+           ALERTS
         ===================================================== */
 
         div[data-testid="stAlert"] {{
@@ -174,7 +175,7 @@ def apply_theme():
 
         div[data-testid="stAlertContainer"][kind="warning"] {{
             background: #FBF3E7 !important;
-            border-left: 3px solid #B8935A !important;
+            border-left: 3px solid #F59E0B !important;
             color: #6B4A1F !important;
         }}
 
@@ -384,17 +385,39 @@ def apply_theme():
         div[data-testid="stChatInput"] {{
             background: #FFFFFF !important;
             border: 1.5px solid #D8DCE3 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 8px rgba(16,32,61,0.06) !important;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
         }}
 
         div[data-testid="stChatInput"]:focus-within {{
             border-color: {GOLD} !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT} !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 18px rgba(16,32,61,0.08) !important;
         }}
 
         div[data-testid="stChatInput"] * {{
             outline: none !important;
+        }}
+
+        div[data-testid="stChatInput"] textarea {{
+            padding: 14px 8px 14px 16px !important;
+            min-height: 52px !important;
+            line-height: 1.5 !important;
+        }}
+
+        div[data-testid="stChatInput"] button {{
+            border-radius: 12px !important;
+            margin-right: 6px !important;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
+        }}
+
+        div[data-testid="stChatInput"] button:hover {{
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 14px {GOLD_SOFT} !important;
+        }}
+
+        div[data-testid="stChatInput"] button:active {{
+            transform: translateY(0) !important;
         }}
 
 
@@ -533,7 +556,7 @@ def apply_theme():
 
 
         /* =====================================================
-           PAGE NAVIGATION (restored + styled)
+           PAGE NAVIGATION
         ===================================================== */
 
         section[data-testid="stSidebarNav"] {{
@@ -549,11 +572,22 @@ def apply_theme():
             font-size: 13.5px !important;
             font-weight: 500 !important;
             margin: 2px 0 !important;
+            transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
         }}
 
         section[data-testid="stSidebarNav"] a:hover {{
             background: rgba(255,255,255,0.05) !important;
             color: #E2E8F0 !important;
+            transform: translateX(2px) !important;
+        }}
+
+        section[data-testid="stSidebarNav"] a [data-testid="stNavPageIcon"] {{
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            vertical-align: middle !important;
+            margin-right: 8px !important;
+            line-height: 0 !important;
         }}
 
         section[data-testid="stSidebarNav"] a[aria-current="page"],
@@ -605,6 +639,174 @@ def apply_theme():
 
 
         /* =====================================================
+           CHAT HERO
+        ===================================================== */
+
+        .ia-hero {{
+            text-align: center;
+            animation: iaHeroFade 0.5s ease both;
+            margin: 4px 0 8px 0 !important;
+            padding: 6px 0 10px 0 !important;
+        }}
+
+        .ia-logo {{
+            width: 100%;
+            line-height: 0;
+            text-align: center;
+        }}
+
+        .ia-logo svg {{
+            height: 68px;
+            width: auto;
+            max-width: 100%;
+            display: inline-block;
+            transition: transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease;
+            opacity: 0.98;
+        }}
+
+        .ia-logo:hover svg {{
+            transform: translateY(-3px);
+            opacity: 1;
+            filter: drop-shadow(0 6px 14px rgba(16,32,61,0.12));
+        }}
+
+        .ia-hero-name {{
+            font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            color: {PRIMARY};
+            margin: 10px 0 0 0;
+            line-height: 1.15;
+        }}
+
+        .ia-hero-name span {{
+            color: {GOLD};
+        }}
+
+        .ia-hero-sub {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: {TEXT_SECONDARY};
+            margin: 4px 0 0 0;
+            line-height: 1.4;
+        }}
+
+        .ia-hero-desc {{
+            font-size: 13.5px;
+            font-weight: 400;
+            color: {TEXT_TERTIARY};
+            max-width: 560px;
+            margin: 8px auto 0 auto;
+            line-height: 1.55;
+        }}
+
+        .ia-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: {GOLD};
+            background: rgba(20,184,166,0.10);
+            border: 1px solid rgba(20,184,166,0.28);
+            border-radius: 999px;
+            padding: 4px 14px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }}
+
+        .ia-badge:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px {GOLD_SOFT};
+        }}
+
+        .ia-badge::before {{
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: {GOLD};
+            flex: 0 0 auto;
+        }}
+
+        .ia-hero-welcome {{
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid {BORDER};
+        }}
+
+        .ia-hero-welcome-title {{
+            font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: {PRIMARY};
+            margin-bottom: 3px;
+        }}
+
+        .ia-hero-welcome-sub {{
+            font-size: 13.5px;
+            color: {TEXT_SECONDARY};
+        }}
+
+        .ia-logo .tagline {{
+            letter-spacing: 1px !important;
+            text-transform: capitalize !important;
+            font-weight: 600 !important;
+            fill: {TEXT_TERTIARY} !important;
+        }}
+
+        .ia-hero--compact {{
+            text-align: left;
+            margin: 0 0 4px 0 !important;
+            padding: 0 0 4px 0 !important;
+        }}
+
+        .ia-hero--compact .ia-logo {{
+            display: inline-flex;
+            vertical-align: middle;
+            width: auto;
+            margin-right: 10px;
+        }}
+
+        .ia-hero--compact .ia-logo svg {{
+            height: 40px;
+        }}
+
+        .ia-hero--compact .ia-hero-name {{
+            display: inline-flex;
+            vertical-align: middle;
+            font-size: 20px;
+            margin: 0;
+        }}
+
+        .ia-hero--compact .ia-hero-sub {{
+            font-size: 13px;
+            margin: 5px 0 0 0;
+        }}
+
+        .ia-hero--compact .ia-badge {{
+            margin-top: 7px;
+            font-size: 11px;
+            padding: 3px 11px;
+        }}
+
+        @keyframes iaHeroFade {{
+            from {{ opacity: 0; transform: translateY(6px); }}
+            to   {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        @media (max-width: 768px) {{
+            .ia-logo svg {{ height: 54px; }}
+            .ia-hero-name {{ font-size: 26px; }}
+        }}
+
+
+        /* =====================================================
            SECTION LABELS
         ===================================================== */
 
@@ -620,7 +822,7 @@ def apply_theme():
 
 
         /* =====================================================
-           MODE SWITCHER (no red dot)
+           MODE SWITCHER
         ===================================================== */
 
         section[data-testid="stSidebar"] div[role="radiogroup"] {{
@@ -673,17 +875,22 @@ def apply_theme():
 
         div[class*="st-key-history_row"] {{
             border-radius: 8px !important;
-            margin: 1px 2px !important;
+            margin: 2px 2px !important;
+            transition: background 0.15s ease, box-shadow 0.15s ease !important;
         }}
 
         div[class*="st-key-history_row"]:hover {{
-            background: rgba(255,255,255,0.035) !important;
+            background: rgba(255,255,255,0.05) !important;
         }}
 
         div[class*="st-key-history_row_active"] {{
             background: {SIDEBAR_ACCENT_BG} !important;
             box-shadow: inset 3px 0 0 {SIDEBAR_ACCENT} !important;
             border-radius: 8px !important;
+        }}
+
+        div[class*="st-key-history_row_active"]:hover {{
+            background: {SIDEBAR_ACCENT_BG} !important;
         }}
 
         div[class*="st-key-history_row"] button,
@@ -695,9 +902,14 @@ def apply_theme():
             text-align: left !important;
             font-size: 12.5px !important;
             font-weight: 500 !important;
-            padding: 8px 12px !important;
+            padding: 9px 12px !important;
             width: 100% !important;
             border-radius: 7px !important;
+            transition: color 0.15s ease !important;
+        }}
+
+        div[class*="st-key-history_row"] button:hover {{
+            color: {SIDEBAR_TEXT} !important;
         }}
 
         div[class*="st-key-history_row_active"] button {{
@@ -726,7 +938,7 @@ def apply_theme():
             color: {PRIMARY} !important;
             font-size: 13px !important;
             font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(184,147,90,0.30) !important;
+            box-shadow: 0 4px 12px rgba(20,184,166,0.30) !important;
         }}
 
         section[data-testid="stSidebar"] button[kind="primary"] p {{
@@ -737,9 +949,9 @@ def apply_theme():
         }}
 
         section[data-testid="stSidebar"] button[kind="primary"]:hover {{
-            background: #C7A56B !important;
-            border: 1px solid #C7A56B !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(184,147,90,0.35) !important;
+            background: #2DD4BF !important;
+            border: 1px solid #2DD4BF !important;
+            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(20,184,166,0.35) !important;
         }}
 
 
@@ -750,7 +962,7 @@ def apply_theme():
         div[class*="st-key-ex_"] .stButton button {{
             background: #FFFFFF !important;
             border: 1px solid {BORDER} !important;
-            border-radius: 12px !important;
+            border-radius: 14px !important;
             color: {TEXT_SECONDARY} !important;
             font-size: 13px !important;
             font-weight: 500 !important;
@@ -759,19 +971,20 @@ def apply_theme():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
             white-space: normal !important;
             line-height: 1.35 !important;
+            cursor: pointer !important;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease !important;
         }}
 
         div[class*="st-key-ex_"] .stButton button:hover {{
-            border-color: {PRIMARY} !important;
-            box-shadow: 0 4px 12px {PRIMARY_SOFT} !important;
+            border-color: {GOLD} !important;
+            box-shadow: 0 10px 24px {PRIMARY_SOFT} !important;
+            transform: translateY(-2px) !important;
             color: {PRIMARY} !important;
         }}
 
 
         /* =====================================================
-           ACCESSIBILITY: visible focus indicator
-           (restores a clear :focus-visible outline so keyboard
-           navigation is obvious; mouse click styling unchanged)
+           ACCESSIBILITY
         ===================================================== */
 
         button:focus-visible,
@@ -879,6 +1092,21 @@ def render_sidebar_brand():
     )
 
 
+_LOGO_SVG_CACHE = None
+
+
+def app_logo_svg() -> str:
+    """Return the application logo (logo/logo.svg) as inline SVG markup."""
+    global _LOGO_SVG_CACHE
+    if _LOGO_SVG_CACHE is None:
+        logo_path = pathlib.Path(__file__).resolve().parent.parent / "logo" / "logo.svg"
+        try:
+            _LOGO_SVG_CACHE = logo_path.read_text(encoding="utf-8")
+        except OSError:
+            _LOGO_SVG_CACHE = ""
+    return _LOGO_SVG_CACHE
+
+
 def confidence_badge_html(label: str, score: float) -> str:
     label = html.escape(str(label))
     score_txt = f"{score:.2f}"
@@ -886,7 +1114,7 @@ def confidence_badge_html(label: str, score: float) -> str:
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#10B981,#34D399);'
-            f'color:white;box-shadow:inset 3px 0 0 #B8935A,0 0 8px rgba(16,185,129,0.35);'
+            f'color:white;box-shadow:inset 3px 0 0 #14B8A6,0 0 8px rgba(16,185,129,0.35);'
             f'font-family:\'IBM Plex Mono\',monospace;">'
             f'{label} · {score_txt}</span>'
         )
@@ -894,7 +1122,7 @@ def confidence_badge_html(label: str, score: float) -> str:
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#F59E0B,#FBBF24);'
-            f'color:white;box-shadow:inset 3px 0 0 #B8935A;'
+            f'color:white;box-shadow:inset 3px 0 0 #14B8A6;'
             f'font-family:\'IBM Plex Mono\',monospace;">'
             f'{label} · {score_txt}</span>'
         )
@@ -902,7 +1130,7 @@ def confidence_badge_html(label: str, score: float) -> str:
         return (
             f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
             f'border-radius:999px;background:linear-gradient(90deg,#EF4444,#F87171);'
-            f'color:white;box-shadow:inset 3px 0 0 #B8935A;'
+            f'color:white;box-shadow:inset 3px 0 0 #14B8A6;'
             f'font-family:\'IBM Plex Mono\',monospace;">'
             f'{label} · {score_txt}</span>'
         )
@@ -936,3 +1164,19 @@ def severity_icon(label: str) -> str:
 
 def mono(value: str) -> str:
     return f'<span class="mono-num">{value}</span>'
+
+def small_logo_html():
+    return '''
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom: 18px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 96 96" fill="none">
+        <rect x="10" y="48" width="16" height="36" rx="3" fill="#0F172A"/>
+        <rect x="32" y="30" width="16" height="54" rx="3" fill="#0F172A"/>
+        <rect x="54" y="12" width="16" height="72" rx="3" fill="#0F172A"/>
+        <path d="M14 60 L82 18" stroke="#14B8A6" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="82" cy="18" r="8" fill="#14B8A6"/>
+      </svg>
+      <span style="font-family:'Inter',sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.5px;">
+        <span style="color:#0F172A;">Insight</span><span style="color:#14B8A6;">AI</span>
+      </span>
+    </div>
+    '''

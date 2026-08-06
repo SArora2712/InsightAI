@@ -7,7 +7,7 @@ from core.theme2 import apply_theme
 
 st.set_page_config(
     page_title="InsightAI — Business Analyst Copilot",
-    page_icon="logo/favicon.png",
+    page_icon="logo/favicon.svg",
     layout="wide",
     initial_sidebar_state="expanded"
 )
