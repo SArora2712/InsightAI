@@ -4,10 +4,21 @@ Wraps the existing orchestrator/agent logic (unchanged) as REST endpoints
 for the custom dashboard frontend. All ingestion happens once at startup,
 mirroring the @st.cache_resource pattern from the Streamlit version.
 """
+import logging
+import time
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
+
+from core.envutil import read_env
+from core.logging_util import configure_logging, get_logger
+
+configure_logging()
+
+logger = get_logger("api.main")
 
 from ingestion.parser import parse_directory
 from ingestion.chunker import chunk_document
@@ -23,18 +34,26 @@ from agents.orchestrator.synthesizer import detect_conflict
 from agents.simulator.decision_simulator import run_decision_simulator
 from agents.sql_agent.executor import execute_sql
 from agents.sql_agent.validator import validate_sql
+from ingestion.config import CHUNK_SIZE, CHUNK_OVERLAP
 
 resources = {}  # populated at startup, shared across requests
+
+# Small TTL cache for the aggregate insights endpoint (avoids re-running the
+# same GROUP BY aggregates on every dashboard poll).
+_INSIGHTS_CACHE: dict = {}
+_INSIGHTS_CACHE_TTL_SECONDS = 120
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("[api] Ingesting documents and building indices...")
+    logger.info("Ingesting documents and building indices...")
 
     docs = parse_directory("data/raw")
     all_chunks = []
     for d in docs:
-        all_chunks.extend(chunk_document(d, chunk_size=120, chunk_overlap=20))
+        all_chunks.extend(
+            chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+        )
     texts = [c.text for c in all_chunks]
 
     provider = get_provider()
@@ -53,19 +72,46 @@ async def lifespan(app: FastAPI):
     resources["agent_tools"] = build_agent_tools(bm25, provider, client)
     resources["chunk_count"] = len(all_chunks)
 
-    print(f"[api] Ready. Indexed {len(all_chunks)} chunks.")
+    logger.info("Ready. Indexed %s chunks.", len(all_chunks))
     yield
     client.close()
 
 
 app = FastAPI(title="InsightAI API", lifespan=lifespan)
 
+# CORS is scoped to the configured frontend origin. Default to a safe localhost
+# so a forgotten config never opens the API to every origin on the internet.
+# Set API_CORS_ORIGINS to your deployed frontend (e.g. https://your-app.streamlit.app).
+_cors_origins = [
+    o.strip()
+    for o in (read_env("API_CORS_ORIGINS", "").split(",") if read_env("API_CORS_ORIGINS") else [])
+]
+if not _cors_origins:
+    _cors_origins = ["http://localhost", "http://localhost:8501"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten to your actual frontend domain once deployed
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+
+# --- Bearer-token gate -----------------------------------------------------
+# When API_ACCESS_TOKEN is set, every /api/* route requires `Authorization:
+# Bearer <token>`. When unset (local dev), the API stays open for convenience.
+_API_TOKEN = read_env("API_ACCESS_TOKEN", "").strip()
+_api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+
+
+def _require_token(authorization: str | None) -> None:
+    if not _API_TOKEN:
+        return
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    supplied = authorization.split(" ", 1)[1].strip()
+    if supplied != _API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid bearer token")
 
 
 # --- Request/response models ---
@@ -96,12 +142,14 @@ def extract_agent_results(tool_calls_made: list[dict]):
 # --- Endpoints ---
 
 @app.get("/api/health")
-def health():
+def health(authorization: str | None = Security(_api_key_header)):
+    _require_token(authorization)
     return {"status": "ok", "chunks_indexed": resources.get("chunk_count", 0)}
 
 
 @app.post("/api/query")
-def query(req: QueryRequest):
+def query(req: QueryRequest, authorization: str | None = Security(_api_key_header)):
+    _require_token(authorization)
     if not req.question.strip():
         raise HTTPException(400, "Question cannot be empty")
 
@@ -161,7 +209,8 @@ def query(req: QueryRequest):
 
 
 @app.post("/api/simulate")
-def simulate(req: SimulateRequest):
+def simulate(req: SimulateRequest, authorization: str | None = Security(_api_key_header)):
+    _require_token(authorization)
     result = run_decision_simulator(req.question)
     if result.get("error"):
         raise HTTPException(400, result["error"])
@@ -169,13 +218,21 @@ def simulate(req: SimulateRequest):
 
 
 @app.get("/api/insights")
-def insights():
-    """Precomputed aggregates for the standing Insights dashboard page."""
+def insights(authorization: str | None = Security(_api_key_header)):
+    """Precomputed aggregates for the standing Insights dashboard page.
+    Results are cached in-process for 120s to avoid re-running the same
+    aggregates (and the underlying SQL retrieval) on every dashboard poll."""
+    _require_token(authorization)
+    now = time.time()
+    cached = _INSIGHTS_CACHE.get("data")
+    if cached is not None and now - cached[0] < _INSIGHTS_CACHE_TTL_SECONDS:
+        return cached[1]
+
     queries = {
         "revenue_by_category": '''SELECT C.CategoryName, SUM(OD.UnitPrice*OD.Quantity*(1-OD.Discount)) AS Revenue
                                     FROM "Order Details" OD JOIN Products P ON OD.ProductID=P.ProductID
                                     JOIN Categories C ON P.CategoryID=C.CategoryID
-                                    GROUP BY C.CategoryName ORDER BY Revenue DESC''',
+                                    GROUP BY C.CategoryName ORDER BY Revenue DESC LIMIT 20''',
         "revenue_by_country": '''SELECT O.ShipCountry, SUM(OD.UnitPrice*OD.Quantity*(1-OD.Discount)) AS Revenue
                                    FROM "Order Details" OD JOIN Orders O ON OD.OrderID=O.OrderID
                                    GROUP BY O.ShipCountry ORDER BY Revenue DESC LIMIT 10''',
@@ -190,4 +247,6 @@ def insights():
         validated = validate_sql(sql)
         result = execute_sql(validated)
         output[key] = result["rows"]
+
+    _INSIGHTS_CACHE["data"] = (now, output)
     return output

@@ -4,6 +4,7 @@ are owned centrally by app.py - this file only renders when st.navigation
 routes to it.
 """
 import html
+import time
 import streamlit as st
 
 from ingestion.parser import parse_directory
@@ -30,12 +31,32 @@ from core.history import (
 )
 from core.llm_client import llm_tracker
 from core.setup import setup_resources
-from core.theme2 import apply_theme, severity_icon, section_label, app_logo_svg
+from core.progress import StepTracker, PROCESSING_STEPS
+from core.text_utils import clean_prose
+from core.theme2 import apply_theme, severity_icon, section_label, favicon_mark_svg, CONFIDENCE_LEGEND
 
 DEBUG_MODE = False
 
 init_db()
 apply_theme()
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def get_recent_conversations(limit: int = 8, max_updated_at: str = "") -> list[dict]:
+    """
+    Load the N most recent conversations together with their messages in a
+    single pass. `max_updated_at` is the max conversations.updated_at from the
+    previous rerun — a new/moved conversation bumps it, invalidating the cache
+    instead of re-querying on every rerun (fixes the old N+1 in the sidebar).
+    """
+    conversations = list_conversations(limit=limit)
+    results = []
+    for conv in conversations:
+        messages = load_conversation_messages(conv["id"])
+        if not messages:
+            continue
+        results.append({"id": conv["id"], "title": conv["title"], "messages": messages})
+    return results
 
 
     
@@ -55,14 +76,59 @@ def extract_agent_results(tool_calls_made: list[dict]):
     return rag_result, sql_result, web_result
 
 
-def run_workflow_query(workflow_app, prompt: str):
+_TOOL_STEP = {
+    "query_sales_database": "Run SQL query",
+    "search_internal_documents": "Search documents",
+}
+
+
+def _progress_wrapped_tools(agent_tools, progress):
+    wrapped = {}
+    for name, fn in (agent_tools or {}).items():
+        step = _TOOL_STEP.get(name)
+        if step is None:
+            wrapped[name] = fn
+            continue
+
+        def make(fn=fn, step=step):
+            def call(*args, **kwargs):
+                progress(step)
+                return fn(*args, **kwargs)
+            return call
+
+        wrapped[name] = make()
+    return wrapped
+
+
+def run_workflow_query(workflow_app, prompt: str, progress=None):
     llm_tracker.reset_query()
     initial_state = {
         "query": prompt, "agents_needed": [], "rag_result": None, "sql_result": None,
         "web_result": None, "final_answer": None, "conflict_detected": None,
         "conflict_summary": None, "confidence": None, "critique": None,
     }
-    result = workflow_app.invoke(initial_state)
+
+    node_step_map = {
+        "sql_agent": "Run SQL query",
+        "rag_agent": "Search documents",
+        "synthesize": "Synthesize answer",
+        "confidence_critique": "Review answer",
+    }
+
+    if progress is None:
+        result = workflow_app.invoke(initial_state)
+    else:
+        # stream_mode="updates" yields one event per completed node, so the
+        # UI can advance the sequential step indicator as nodes finish.
+        result = dict(initial_state)
+        for event in workflow_app.stream(initial_state, stream_mode="updates"):
+            for node_name, payload in event.items():
+                step = node_step_map.get(node_name)
+                if step:
+                    progress(step)
+                if isinstance(payload, dict):
+                    result.update(payload)
+
     answer = result.get("final_answer")
     if answer is None or not str(answer).strip():
         answer = "Sorry, I couldn't generate an answer."
@@ -74,12 +140,15 @@ def run_workflow_query(workflow_app, prompt: str):
         "confidence": result.get("confidence"),
         "critique": result.get("critique"),
         "web_sources": (result.get("web_result") or {}).get("sources", []),
+        "llm_usage": llm_tracker.snapshot(),
         "is_error": False,
     }
     return answer, meta
 
 
-def run_agent_query(prompt: str, agent_tools):
+def run_agent_query(prompt: str, agent_tools, progress=None):
+    if progress is not None:
+        agent_tools = _progress_wrapped_tools(agent_tools, progress)
     result = run_agentic_query(prompt, agent_tools)
     answer = result.get("answer")
     if answer is None or not str(answer).strip():
@@ -89,6 +158,9 @@ def run_agent_query(prompt: str, agent_tools):
     iterations = result.get("iterations", 0)
     rag_result = sql_result = web_result = None
     conflict = {"conflict_detected": False, "conflict_summary": None}
+
+    if progress is not None:
+        progress("Synthesize answer")
 
     if iterations == 0:
         confidence = {"score": 1.0, "label": "High", "reasons": ["Correctly declined — out of scope."]}
@@ -100,6 +172,8 @@ def run_agent_query(prompt: str, agent_tools):
         rag_result, sql_result, web_result = extract_agent_results(tool_calls_made)
         conflict = detect_conflict(rag_result, sql_result, web_result)
         confidence = compute_confidence(conflict["conflict_detected"], rag_result, sql_result, web_result)
+        if progress is not None:
+            progress("Review answer")
         critique = critique_answer(prompt, answer, rag_result, sql_result, web_result)
 
     meta = {
@@ -108,6 +182,7 @@ def run_agent_query(prompt: str, agent_tools):
         "conflict_summary": conflict.get("conflict_summary"),
         "confidence": confidence, "critique": critique,
         "web_sources": (web_result or {}).get("sources", []),
+        "llm_usage": llm_tracker.snapshot(),
         "is_error": False,
     }
     return answer, meta
@@ -116,7 +191,7 @@ def run_agent_query(prompt: str, agent_tools):
 def safe_markdown(text: str):
     if not text:
         return
-    st.markdown(text.replace("$", "\\$"))
+    st.markdown(text)
 
 
 def render_chip_row(meta: dict, key: str = "chip"):
@@ -133,7 +208,7 @@ def render_chip_row(meta: dict, key: str = "chip"):
     popover_chips = []     # (label, icon, render_fn)
 
     if meta.get("mode"):
-        plain_chips.append(meta["mode"])
+        plain_chips.append(meta["mode"].replace(" (v1)", "").replace(" (v2)", ""))
 
     agents = meta.get("agents_needed", [])
     if agents:
@@ -160,6 +235,7 @@ def render_chip_row(meta: dict, key: str = "chip"):
         icon = severity_icon(label)
 
         def render_confidence():
+            st.markdown(f"*Confidence scale: {CONFIDENCE_LEGEND}*")
             for reason in confidence.get("reasons", []):
                 st.markdown(f"- {reason}")
         popover_chips.append((f"{icon} {label} · {score}", None, render_confidence))
@@ -169,12 +245,16 @@ def render_chip_row(meta: dict, key: str = "chip"):
         severity = critique.get("severity", "unknown")
 
         def render_critique():
+            st.markdown(
+                "_An internal review step that checks the answer against "
+                "source data before it is returned to you._"
+            )
             verdict = critique.get("verdict", "")
             if verdict:
                 st.markdown(verdict)
             for finding in critique.get("findings", []):
                 st.markdown(f"- {finding}")
-        popover_chips.append((f"Critique: {severity}", ":material/search:", render_critique))
+        popover_chips.append((f"Critique: {severity} ⓘ", ":material/search:", render_critique))
 
     web_sources = meta.get("web_sources", [])
     if web_sources:
@@ -184,6 +264,19 @@ def render_chip_row(meta: dict, key: str = "chip"):
                 url = source.get("url", "#")
                 st.markdown(f"- [{title}]({url})")
         popover_chips.append((f"{len(web_sources)} source(s)", ":material/menu_book:", render_sources))
+
+    llm_usage = meta.get("llm_usage")
+    if llm_usage and llm_usage.get("query_count"):
+        calls = llm_usage.get("query_count", 0)
+        tokens = llm_usage.get("query_tokens", 0)
+
+        def render_usage():
+            st.markdown(
+                f"**{calls} LLM call(s)** · {tokens:,} tokens "
+                f"(session total: {llm_usage.get('session_total', 0)} calls, "
+                f"{llm_usage.get('session_tokens', 0):,} tokens)"
+            )
+        popover_chips.append((f"{calls} LLM call(s)", ":material/search:", render_usage))
 
     total_chips = len(plain_chips) + len(popover_chips)
     if total_chips == 0:
@@ -225,9 +318,21 @@ def render_chip_row(meta: dict, key: str = "chip"):
         )
 
 
-def render_assistant_message(answer: str, meta: dict, key: str = "msg"):
+def render_assistant_message(answer: str, meta: dict, key: str = "msg", processing_steps=None):
+    """Render a saved assistant message: a single clean "Analysis complete"
+    line when the message was produced by a live run (no itemized step
+    breakdown), the answer card, and the metadata chip row. `processing_steps`
+    only flags that a run happened — the breakdown itself is no longer shown."""
+    if processing_steps:
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:6px;font-size:13px;'
+            'font-weight:600;color:#0F766E;margin:1px 2px 6px;cursor:default;">'
+            '<span style="color:#14B8A6;font-size:14px;">✓</span>'
+            "Analysis complete</div>",
+            unsafe_allow_html=True,
+        )
     is_error = bool((meta or {}).get("is_error"))
-    answer_esc = html.escape(answer or "")
+    answer_esc = html.escape(clean_prose(answer or ""))
 
     if is_error:
         st.markdown(
@@ -240,8 +345,9 @@ def render_assistant_message(answer: str, meta: dict, key: str = "msg"):
                 padding:16px 18px;
                 margin-bottom:8px;
             ">
-                <div style="font-weight:600;color:#B91C1C;margin-bottom:4px;">
-                    ⚠ Processing failed
+                <div style="font-weight:600;color:#B91C1C;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                    <span class="material-symbols-rounded" style="font-size:17px;">error</span>
+                    Processing failed
                 </div>
                 <div style="color:#7F1D1D;">{answer_esc}</div>
             </div>
@@ -288,6 +394,7 @@ with st.sidebar:
     mode = st.radio(
         "Mode",
         ["Workflow (v1)", "Agent (v2)"],
+        format_func=lambda x: x.replace(" (v1)", "").replace(" (v2)", ""),
         label_visibility="collapsed",
         horizontal=True,
         help=(
@@ -298,7 +405,8 @@ with st.sidebar:
 
     # Data sources
     st.markdown('<div class="ia-section-label">DATA SOURCES</div>', unsafe_allow_html=True)
-    with st.popover("3 sources connected", icon=":material/database:", use_container_width=True):
+    with st.popover("Sales DB · Reports · Documents", icon=":material/database:", key="src_pop", use_container_width=True):
+        st.caption("3 sources connected")
         st.markdown(
             """
             **● Internal reports** — Document RAG  
@@ -307,14 +415,18 @@ with st.sidebar:
             """
         )
 
-    # History (quick switcher only)
-    st.markdown('<div class="ia-section-label">HISTORY</div>', unsafe_allow_html=True)
+    # Recent conversations (quick switcher only)
+    st.markdown('<div class="ia-section-label">RECENT</div>', unsafe_allow_html=True)
 
-    conversations = list_conversations(limit=8)
-    real_conversations = [
-        conv for conv in conversations
-        if load_conversation_messages(conv["id"])
-    ]
+    try:
+        _recent_meta = list_conversations(limit=8)
+        max_updated_at = max(
+            (c.get("updated_at") or "" for c in _recent_meta),
+            default="",
+        )
+        real_conversations = get_recent_conversations(limit=8, max_updated_at=max_updated_at)
+    except Exception:
+        real_conversations = []
 
     if not real_conversations:
         st.markdown(
@@ -335,7 +447,7 @@ with st.sidebar:
             if len(title) > 34:
                 title = title[:34] + "…"
 
-            messages = load_conversation_messages(conv["id"])
+            messages = conv.get("messages") or []
 
             with st.container(key=row_key):
                 if st.button(title, key=f"conv_{conv['id']}", use_container_width=True):
@@ -366,68 +478,63 @@ if "conversation_id" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-_empty = not st.session_state.messages
+if len(st.session_state.messages) == 0:
+    hero_html = (
+        "<div class='ia-hero'>"
+        "<div class='ia-logo'>" + favicon_mark_svg() + "</div>"
+        "<div class='ia-hero-name'>Insight<span>AI</span></div>"
+        "<div class='ia-hero-sub'>What would you like to analyze?</div>"
+        "</div>"
+    )
+else:
+    hero_html = (
+        "<div class='ia-hero ia-hero--compact'>"
+        "<div class='ia-logo'>" + favicon_mark_svg() + "</div>"
+        "<div class='ia-hero-name'>Insight<span>AI</span></div>"
+        "</div>"
+    )
 
-if _empty:
-    badge = mode
-
-    logo_svg = '''
-    <svg xmlns="http://www.w3.org/2000/svg" width="340" height="88" viewBox="0 0 420 110" fill="none">
-      <rect x="6" y="52" width="16" height="38" rx="3" fill="#0F172A"/>
-      <rect x="28" y="34" width="16" height="56" rx="3" fill="#0F172A"/>
-      <rect x="50" y="16" width="16" height="74" rx="3" fill="#0F172A"/>
-      <path d="M10 66 L72 20" stroke="#14B8A6" stroke-width="6.5" stroke-linecap="round"/>
-      <circle cx="72" cy="20" r="7.5" fill="#14B8A6"/>
-      <text x="100" y="72" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" letter-spacing="-1.5">
-        <tspan fill="#0F172A">Insight</tspan><tspan fill="#14B8A6">AI</tspan>
-      </text>
-    </svg>
-    '''
-
-    hero_html = f"""
-    <div class="ia-hero" style="padding: 28px 0 20px 0;">
-      <div class="ia-logo" style="margin-bottom: 6px;">
-        {logo_svg}
-      </div>
-      <div class="ia-hero-sub" style="margin-top: 4px; font-size: 16px;">
-        Business Analytics Copilot
-      </div>
-      <div class="ia-hero-desc" style="margin-top: 10px; max-width: 580px;">
-        InsightAI routes your question across structured data, business reports
-        and the web to the best AI workflow, then explains its confidence in every answer.
-      </div>
-      <span class="ia-badge" style="margin-top: 16px;">{badge}</span>
-      <div class="ia-hero-welcome" style="margin-top: 28px; padding-top: 20px;">
-        <div class="ia-hero-welcome-title">Welcome back</div>
-        <div class="ia-hero-welcome-sub">Ask InsightAI anything about your business</div>
-      </div>
-    </div>
-    """
-    st.markdown(hero_html, unsafe_allow_html=True)
+st.markdown(hero_html, unsafe_allow_html=True)
 try:
     workflow_app, agent_tools, chunk_count = setup_resources()
-    st.sidebar.success(f"Indexed {chunk_count} document chunks")
     st.session_state.chunk_count = chunk_count
 except Exception as e:
-    st.error("InsightAI failed during startup.")
+    st.error("InsightAI could not connect to its data index.")
+    st.write(
+        "This usually happens when another InsightAI instance is already "
+        "running — the embedded index allows only one at a time. Close the "
+        "other instance and retry, or set `QDRANT_URL` / `QDRANT_API_KEY` "
+        "for shared access."
+    )
     if DEBUG_MODE:
-        st.exception(e)
-    else:
-        st.caption("Contact support if this keeps happening.")
+        with st.expander("Show technical details"):
+            st.exception(e)
+    if st.button("Retry connection", icon=":material/refresh:", type="primary"):
+        setup_resources.clear()
+        st.rerun()
     st.stop()
 
 if not st.session_state.messages:
+    st.markdown(
+        '<div class="ia-suggestion-label">Suggested analyses</div>',
+        unsafe_allow_html=True,
+    )
     example_cols = st.columns(3, gap="medium")
     examples = [
-        "What was total revenue by category?",
-        "Is the revenue decline mentioned in our reports reflected in the data?",
-        "How might current inflation affect future sales?",
+        ("Revenue performance", "What was total revenue by category?", ":material/bar_chart:"),
+        ("Business trends", "Is the revenue decline mentioned in our reports reflected in the data?", ":material/trending_up:"),
+        ("Forecasting", "How might current inflation affect future sales?", ":material/query_stats:"),
     ]
     clicked_example = None
-    for col, ex in zip(example_cols, examples):
+    for col, (title, question, icon) in zip(example_cols, examples):
         with col:
-            if st.button(ex, use_container_width=True, key=f"ex_{ex}"):
-                clicked_example = ex
+            if st.button(
+                f"{title}\n{question}",
+                key=f"sugg_{title}",
+                use_container_width=True,
+                icon=icon,
+            ):
+                clicked_example = question
 else:
     clicked_example = None
     
@@ -436,11 +543,16 @@ AVATARS = {"user": ":material/person:", "assistant": ":material/auto_awesome:"}
 for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"], avatar=AVATARS.get(msg["role"])):
         if msg["role"] == "assistant":
-            render_assistant_message(msg["content"], msg.get("meta"), key=f"msg_{i}")
+            render_assistant_message(
+                msg["content"],
+                msg.get("meta"),
+                key=f"msg_{i}",
+                processing_steps=msg.get("processing_steps"),
+            )
         else:
             safe_markdown(msg["content"])
 
-prompt = st.chat_input("Ask InsightAI a question...") or clicked_example
+prompt = st.chat_input("Ask InsightAI about your business...") or clicked_example
 
 if prompt:
     if st.session_state.conversation_id is None:
@@ -454,12 +566,30 @@ if prompt:
         safe_markdown(prompt)
 
     with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-        with st.spinner("InsightAI is analyzing..."):
+        with st.status("Analyzing your question…", expanded=False) as status:
+            status.update(label="Analyzing your question…", state="running")
+            tracker = StepTracker()
+
+            # Single-line progress: the status label itself is the indicator, and
+            # it updates to the newly-active step as each one begins. Pacing keeps
+            # every label visible for a moment (Streamlit streams deltas to the
+            # browser while the script runs) instead of flashing through instantly.
+            MIN_STEP_SECONDS = 0.45
+            _last_step_at = [0.0]
+
+            def progress(step_label):
+                remaining = MIN_STEP_SECONDS - (time.monotonic() - _last_step_at[0])
+                if remaining > 0 and tracker.active is not None:
+                    time.sleep(remaining)
+                tracker.advance(step_label)
+                _last_step_at[0] = time.monotonic()
+                status.update(label=f"{tracker.active}…", state="running")
+
             try:
                 if mode == "Workflow (v1)":
-                    answer, meta = run_workflow_query(workflow_app, prompt)
+                    answer, meta = run_workflow_query(workflow_app, prompt, progress=progress)
                 else:
-                    answer, meta = run_agent_query(prompt, agent_tools)
+                    answer, meta = run_agent_query(prompt, agent_tools, progress=progress)
             except Exception as e:
                 import traceback
                 traceback.print_exc()  # surface the real failure on the terminal
@@ -476,12 +606,24 @@ if prompt:
                         "verdict": "The system failed to generate a reliable answer.",
                     },
                 }
+                tracker.complete()
                 if DEBUG_MODE:
                     with st.expander("Show technical details"):
                         st.exception(e)
+                status.update(label="Analysis failed", state="error")
+            else:
+                tracker.complete()
+                status.update(label="Analysis complete", state="complete")
 
         render_assistant_message(answer, meta, key=f"msg_{len(st.session_state.messages)}")
-        st.session_state.messages.append({"role": "assistant", "content": answer, "meta": meta})
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": answer,
+                "meta": meta,
+                "processing_steps": list(PROCESSING_STEPS),
+            }
+        )
 
     save_message(st.session_state.conversation_id, "assistant", answer, meta)
 

@@ -1,40 +1,54 @@
+"""
+Orchestrator graph integration test (marked `integration`).
+
+Builds the real index and runs the full Workflow (v1) graph on a few
+questions. Without an LLM key the model returns the documented no-key
+placeholder, so assertions focus on graph wiring (state shape), not on
+answer content.
+"""
+import pytest
+
 from ingestion.parser import parse_directory
 from ingestion.chunker import chunk_document
-from ingestion.vector_store import get_client, ensure_collection, upsert_chunks
+from ingestion.vector_store import VectorStore
 from ingestion.sparse import BM25Index
 from ingestion.embeddings import get_provider
-from agents.orchestrator.graph import build_orchestrator_graph  # adjust path if orchestrator lives elsewhere
+from ingestion.config import CHUNK_SIZE, CHUNK_OVERLAP
+from agents.orchestrator.graph import build_orchestrator_graph
 
-docs = parse_directory("data/raw")
-all_chunks = []
-for d in docs:
-    all_chunks.extend(chunk_document(d, chunk_size=120, chunk_overlap=20))
-texts = [c.text for c in all_chunks]
 
-provider = get_provider()
-provider.fit_if_needed(texts)
-dense_vectors = provider.embed_texts(texts)
+@pytest.mark.integration
+def test_workflow_graph_returns_full_state():
+    docs = parse_directory("data/raw")
+    all_chunks = []
+    for d in docs:
+        all_chunks.extend(chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP))
+    texts = [c.text for c in all_chunks]
 
-bm25 = BM25Index()
-bm25.fit(texts)
-sparse_vectors = [bm25.encode(t) for t in texts]
+    provider = get_provider()
+    provider.fit_if_needed(texts)
+    dense = provider.embed_texts(texts)
 
-client = get_client()
-ensure_collection(client)
-upsert_chunks(client, all_chunks, dense_vectors, sparse_vectors)
+    bm25 = BM25Index()
+    bm25.fit(texts)
+    sparse = [bm25.encode(t) for t in texts]
 
-app = build_orchestrator_graph(bm25, provider, client)
+    store = VectorStore.get_instance()
+    store.upsert_chunks(all_chunks, dense, sparse)
+    app = build_orchestrator_graph(bm25, provider, store.client)
 
-test_questions = [
-    "What was total revenue by category last quarter?",
-    "Who is the current Federal Reserve chair?",
-    "What is driving customer churn?",
-]
+    result = app.invoke({
+        "query": "What was total revenue by category last quarter?",
+        "agents_needed": [], "rag_result": None, "sql_result": None,
+        "web_result": None, "final_answer": None, "conflict_detected": None,
+        "conflict_summary": None, "confidence": None, "critique": None,
+    })
 
-for q in test_questions:
-    print(f"\n{'='*60}\nQ: {q}")
-    result = app.invoke({"query": q, "agents_needed": [], "rag_result": None, "sql_result": None, "web_result": None})
-    print(f"Agents used: {result['agents_needed']}")
-   
-    print(f"\nFinal answer:\n{result['final_answer']}")
-client.close()
+    assert "final_answer" in result
+    assert isinstance(result["agents_needed"], list)
+    store.close()
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(pytest.main([__file__, "-m", "integration"]))

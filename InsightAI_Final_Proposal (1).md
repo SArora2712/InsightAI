@@ -113,16 +113,18 @@ Dashboard: Scenario Analysis panel, explicitly labeled
 
 | Layer | Technology |
 |---|---|
-| Orchestration | LangGraph |
-| Backend | FastAPI |
-| UI | Streamlit |
-| Vector Database | Qdrant |
-| Document Parsing | PyMuPDF |
-| SQL | SQLite/PostgreSQL |
-| Web Search | Tavily or SerpAPI |
-| LLM | OpenRouter |
-| Cache | Redis |
-| Evaluation | RAGAS |
+| Orchestration | LangGraph — Workflow (v1) router + Agentic mode (Agent v2) |
+| App runtime / Backend | Streamlit (multi-page: Chat, Dashboard, Executive report, History, Simulator) |
+| UI layer (optional) | FastAPI (thin API wrapper) |
+| Vector Database | Qdrant (local or hosted) — hybrid: dense FastEmbed + BM25 sparse |
+| Embeddings / Rerank | FastEmbed (bge-small-en-v1.5) + `ms-marco-MiniLM-L-6-v2` cross-encoder |
+| Document Parsing | PyMuPDF (+ python-docx / python-pptx) |
+| SQL | SQLite (PostgreSQL-ready) |
+| Web Search | Tavily |
+| LLM | OpenAI-compatible, provider-agnostic (default: Groq `llama-3.3-70b-versatile`) |
+| Cache | Diskcache + SQLite + Streamlit TTL caching (Redis optional) |
+| Persistence | SQLite — conversation history, indices |
+| Evaluation | RAGAS eval harness (`eval/`) |
 
 ---
 
@@ -133,10 +135,37 @@ Dashboard: Scenario Analysis panel, explicitly labeled
 **Market Research Agent** — competitor news, market trend summaries with references
 **Multi-Source Reasoning + Conflict Reconciliation** — combines and honestly reconciles internal docs, database, and web research
 **Executive Report Generator** — Executive Summary, Key Findings, Risks, Opportunities, Recommendations (confidence-tagged, critiqued), References
+**Dual-Runtime Modes** — a fixed Workflow (v1) LangGraph router for predictable, auditable routing, plus an Agentic (v2) mode where the LLM selects and sequences tools dynamically
 
 ---
 
-## 7. Evaluation
+## 7. Product UI (Current Build)
+
+The application ships as a polished, enterprise-styled multi-page Streamlit app (navy + teal theme, custom logo lockup in the sidebar):
+
+- **Chat (home)** — hero block (logo, product name, description, workflow badge, welcome), prompt suggestion cards, and a premium chat input; answer cards render confidence tags, critique notes, and per-tool traces
+- **Dashboard** — self-serve KPIs and full-width Plotly charts (wide layout, container-stretched visuals)
+- **Executive report** — one-click, citation-backed report for decision-makers
+- **History** — persisted conversation list with switching and management
+- **Simulator** — What-If decision scenarios, explicitly labeled directional (not statistical forecasting)
+
+## 8. Screenshots
+
+> Add current captures to `screenshots/` (same directory as this document).
+
+- **Chat home (empty state)** — hero (logo, headline, description, workflow badge, welcome) + suggestion cards + chat input
+- **Dashboard** — KPI cards and full-width charts
+- **Executive report** — findings, confidence-tagged and critiqued recommendations, references
+- **Simulator** — What-If analysis panel
+
+![Chat home](screenshots/chat_home.png)
+![Dashboard](screenshots/dashboard.png)
+![Executive report](screenshots/executive_report.png)
+![Simulator](screenshots/simulator.png)
+
+---
+
+## 9. Evaluation
 
 Measured across baseline vs full pipeline:
 - Answer Faithfulness (RAGAS)
@@ -150,33 +179,8 @@ Measured across baseline vs full pipeline:
 
 ---
 
-## 8. 3-Week Build Plan
 
-**Week 1 — Foundations: Document RAG + SQL Agent**
-- Day 1-2: Repo/env setup, synthetic business dataset (sales DB, sample reports/SOPs as PDFs), Qdrant + hybrid search setup
-- Day 3-4: Document RAG chain (retrieval + reranking)
-- Day 5-6: SQL Agent (NL→SQL, execution, explanation)
-- Day 7: Test both independently on sample business questions
-
-**Week 2 — Router, Web Search, Fusion + Conflict Reconciler**
-- Day 1: LangGraph router — decides which source(s) a query needs
-- Day 2-3: Web search integration (Tavily/SerpAPI) + Market Research Agent
-- Day 4-5: Information Fusion Agent + **Source-Conflict Reconciler** (detect disagreement across the 3 sources, explain compounding causes)
-- Day 6-7: Business Reasoning Agent, end-to-end integration test
-
-**Week 3 — Report Generation, Confidence Scoring, Critique, Decision Simulator, Polish**
-- Day 1-2: Executive Report Generator
-- Day 3: **Confidence Scorer** (HIGH/MEDIUM/LOW tagging per recommendation)
-- Day 4: **Recommendation Critique Agent** (risk/downside/staleness check)
-- Day 5: **AI Decision Simulator** — scenario-query detection in router, new reasoning prompt mode (Benefits/Risks/Assumptions/Confidence), wired to existing Confidence Scorer + Critique Agent
-- Day 6: Streamlit dashboard (Executive Summary cards, Source Breakdown, SQL charts, Recommendation cards, Scenario Analysis panel, trace panel), Redis caching
-- Day 7: RAGAS evaluation run + conflict-detection/confidence-calibration checks, design rationale write-up, demo rehearsal
-
-**Buffer: 3 days** — reserved for SQL agent edge cases or fusion agent debugging, the two highest-risk components.
-
----
-
-## 9. Ratings
+## 11. Ratings
 
 | Factor | Rating (/10) |
 |---|---|
@@ -190,11 +194,11 @@ Measured across baseline vs full pipeline:
 
 ---
 
-## 10. Resume Bullet
+## 12. Resume Bullet
 
 "Built an enterprise-grade AI Business Analyst Copilot (LangGraph, Hybrid RAG, SQL Agent, web search) with a source-conflict reconciliation layer, a confidence-scored and self-critiqued recommendation engine, and an AI Decision Simulator for evidence-grounded what-if scenario analysis — generating citation-backed executive reports across documents, databases, and live market research."
 
-## 11. Talking Points
+## 13. Talking Points
 **Why these four features:** Most multi-source AI tools optimize for producing one smooth-sounding answer. The real failure mode in business analytics tools is false confidence — blending disagreeing sources into a clean narrative, stating every recommendation with the same certainty regardless of evidence strength, and only ever answering what's explicitly asked. These four features directly target that: surfacing conflict instead of hiding it, scoring confidence instead of assuming it, critiquing recommendations before they reach a decision-maker, and letting decision-makers explore hypotheticals with transparent, evidence-grounded (not falsely precise) reasoning.
 
 **On the Decision Simulator specifically:** It's explicitly qualitative/directional reasoning, not statistical forecasting — the UI labels it as such. This is a deliberate scope choice: it avoids the "fake precision" trap of dressing up LLM speculation as a real predictive model, while still giving decision-makers a structured way to think through hypotheticals with stated assumptions and grounded confidence.

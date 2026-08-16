@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit tests (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest
+          # Only the packages required by the unit-fested modules:
+          pip install -r requirements.txt
+
+      - name: Run unit tests (excludes `integration`-marked tests)
+        run: pytest -m "not integration" -q --maxfail=1
+
+  # Optional heavier integration run that needs the real index/DB and an
+  # LLM key. Runs on workflow_dispatch (manual) so it doesn't slow every push.
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    # The workflow dispatch cannot read secrets in `if:`, so this job runs
+    # on manual trigger or on push with a special ref tag.
+    if: github.event_name == 'workflow_dispatch'
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest
+          pip install -r requirements.txt
+
+      - name: Run integration tests
+        run: pytest -m integration -q --maxfail=1
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}

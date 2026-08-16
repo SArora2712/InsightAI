@@ -50,7 +50,11 @@ Projected result (straight-line, holding all else constant):
 
 Write a brief, clear narrative explaining this projection. Explicitly state this is a straight-line \
 projection assuming volume/behavior doesn't change in response (no elasticity modeled) - be upfront \
-about this limitation. Do not invent any numbers beyond what's given above."""
+about this limitation. Do not invent any numbers beyond what's given above.\
+\
+FORMATTING RULE: Write every number and figure as plain text. NEVER wrap any number, dollar amount, \
+or figure in backticks, asterisks, or any other code/emphasis formatting - for example write \
+"28.86" not "`28.86`" or "*28.86*". No markdown at all."""
 
 
 def _get_category_baseline(target: str) -> dict | None:

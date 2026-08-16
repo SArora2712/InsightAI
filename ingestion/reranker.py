@@ -19,6 +19,9 @@ to run over an entire collection), and you keep the top N after rerank
 from typing import List, Tuple
 
 from ingestion.sparse import word_tokenize
+from core.logging_util import get_logger
+
+logger = get_logger("ingestion.reranker")
 
 _cross_encoder = None
 _USING_CROSS_ENCODER = False
@@ -30,12 +33,15 @@ def _try_load_cross_encoder():
         from fastembed.rerank.cross_encoder import TextCrossEncoder
         _cross_encoder = TextCrossEncoder(model_name="Xenova/ms-marco-MiniLM-L-6-v2")
         _USING_CROSS_ENCODER = True
-        print("[reranker] Using fastembed cross-encoder (Xenova/ms-marco-MiniLM-L-6-v2) — real reranking.")
+        logger.info("Using fastembed cross-encoder (Xenova/ms-marco-MiniLM-L-6-v2) — real reranking.")
     except Exception as e:
         _USING_CROSS_ENCODER = False
-        print(f"[reranker] Cross-encoder unavailable ({type(e).__name__}), falling back to lexical-overlap "
-              f"reranking. Expected in network-restricted sandboxes; on your machine with normal internet "
-              f"access, the real cross-encoder downloads once and this fallback won't trigger.")
+        logger.warning(
+            "Cross-encoder unavailable (%s), falling back to lexical-overlap "
+            "reranking. Expected in network-restricted sandboxes; on your machine "
+            "with normal internet access, the real cross-encoder downloads once "
+            "and this fallback won't trigger.", type(e).__name__,
+        )
 
 
 _try_load_cross_encoder()
@@ -78,6 +84,7 @@ if __name__ == "__main__":
     from ingestion.chunker import chunk_document
     from ingestion.embeddings import embed_texts, fit_fallback_vectorizer, _USING_FASTEMBED
     from ingestion.sparse import BM25Index
+    from ingestion.config import CHUNK_SIZE, CHUNK_OVERLAP
     from ingestion.vector_store import (
         get_client, ensure_collection, upsert_chunks, hybrid_search,
     )
@@ -85,7 +92,7 @@ if __name__ == "__main__":
     docs = parse_directory("data/raw")
     all_chunks = []
     for d in docs:
-        all_chunks.extend(chunk_document(d, chunk_size=120, chunk_overlap=20))
+        all_chunks.extend(chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP))
     texts = [c.text for c in all_chunks]
 
     if not _USING_FASTEMBED:

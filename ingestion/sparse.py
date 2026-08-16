@@ -22,6 +22,9 @@ from typing import List, Dict
 
 from ingestion.tokenizer import word_tokenize
 from ingestion.config import BM25_K1, BM25_B, BM25_INDEX_PATH
+from core.logging_util import get_logger
+
+logger = get_logger("ingestion.sparse")
 
 
 @dataclass
@@ -113,12 +116,12 @@ def fit_or_load(corpus: List[str], path: str = BM25_INDEX_PATH, force_refit: boo
     """Load a persisted index if one exists, otherwise fit fresh and save.
     Set force_refit=True after adding new documents to the corpus."""
     if not force_refit and BM25Index.exists(path):
-        print(f"[sparse] Loaded persisted BM25 index from {path}.")
+        logger.info("Loaded persisted BM25 index from %s.", path)
         return BM25Index.load(path)
 
-    print(f"[sparse] Fitting BM25 index on {len(corpus)} documents...")
+    logger.info("Fitting BM25 index on %s documents...", len(corpus))
     idx = BM25Index()
     idx.fit(corpus)
     idx.save(path)
-    print(f"[sparse] Saved BM25 index to {path}.")
+    logger.info("Saved BM25 index to %s.", path)
     return idx

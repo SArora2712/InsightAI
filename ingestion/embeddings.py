@@ -16,6 +16,9 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from ingestion.config import EMBEDDING_DIM, DENSE_MODEL_NAME, EMBEDDING_BATCH_SIZE
+from core.logging_util import get_logger
+
+logger = get_logger("ingestion.embeddings")
 
 
 def _batched(items: List, batch_size: int):
@@ -88,8 +91,10 @@ class TFIDFFallbackProvider(EmbeddingProvider):
 def get_provider() -> EmbeddingProvider:
     try:
         provider = FastEmbedProvider()
-        print(f"[embeddings] Using {provider.name} ({DENSE_MODEL_NAME}) — real neural embeddings.")
+        logger.info("Using %s (%s) — real neural embeddings.", provider.name, DENSE_MODEL_NAME)
         return provider
     except Exception as e:
-        print(f"[embeddings] fastembed unavailable ({type(e).__name__}), falling back to TF-IDF.")
+        logger.warning(
+            "fastembed unavailable (%s), falling back to TF-IDF.", type(e).__name__,
+        )
         return TFIDFFallbackProvider()

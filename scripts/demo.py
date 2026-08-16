@@ -13,6 +13,7 @@ from ingestion.chunker import chunk_document
 from ingestion.vector_store import get_client, ensure_collection, upsert_chunks
 from ingestion.sparse import BM25Index
 from ingestion.embeddings import get_provider
+from ingestion.config import CHUNK_SIZE, CHUNK_OVERLAP
 from agents.orchestrator.graph import build_orchestrator_graph
 
 print("=" * 70)
@@ -23,7 +24,7 @@ print("\n[Setup] Ingesting documents and building indices...\n")
 docs = parse_directory("data/raw")
 all_chunks = []
 for d in docs:
-    all_chunks.extend(chunk_document(d, chunk_size=120, chunk_overlap=20))
+    all_chunks.extend(chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP))
 texts = [c.text for c in all_chunks]
 
 provider = get_provider()

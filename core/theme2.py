@@ -1,7 +1,7 @@
 """
 InsightAI - Shared theme, injected on every page.
-Design direction: light navy sidebar, light elevated canvas,
-navy + teal brand palette (teal = small accents only).
+Design direction: light elevated canvas, navy sidebar,
+teal product accent. Single source of truth for design tokens.
 """
 
 import html
@@ -10,39 +10,49 @@ import streamlit as st
 
 
 # ---------------------------------------------------------------------------
-# Color tokens
+# Brand / core
 # ---------------------------------------------------------------------------
 
-SIDEBAR_BG          = "#0B0F19"
-SIDEBAR_ACTIVE_BG   = "#1E1B4B"
-SIDEBAR_HOVER_BG    = "#1F2937"
-SIDEBAR_TEXT        = "#F3F4F6"
-SIDEBAR_TEXT_MUTED  = "#9CA3AF"
-SIDEBAR_TEXT_DIM    = "#6B7280"
+NAVY                = "#10203D"
+NAVY_DARK           = "#0B1A33"
+NAVY_SOFT           = "rgba(16,32,61,0.12)"
 
-SIDEBAR_CARD        = "#111827"
-SIDEBAR_CARD_HOVER  = "#172033"
-SIDEBAR_BORDER      = "rgba(255,255,255,0.07)"
-SIDEBAR_ACCENT      = "#14B8A6"
-SIDEBAR_ACCENT_BG   = "rgba(20,184,166,0.16)"
-SIDEBAR_MUTED       = "#64748B"
+TEAL                = "#14B8A6"
+TEAL_SOFT           = "rgba(20,184,166,0.16)"
 
-BG                  = "#F7F8FA"
-CARD_BG             = "#FFFFFF"
-BORDER              = "#E8EAEE"
-BORDER_HOVER        = "#D8DCE3"
-
-PRIMARY             = "#10203D"
+PRIMARY             = NAVY
 PRIMARY_HOVER       = "#1B2E55"
-PRIMARY_BG          = "#EEF1F6"
-PRIMARY_SOFT        = "rgba(16,32,61,0.12)"
+PRIMARY_BG          = "#EEF4F8"
+PRIMARY_SOFT        = NAVY_SOFT
 
-GOLD                = "#14B8A6"          # teal accent
-GOLD_SOFT           = "rgba(20,184,166,0.18)"
 
-TEXT_PRIMARY        = "#10203D"
-TEXT_SECONDARY      = "#5A6472"
-TEXT_TERTIARY       = "#8A93A3"
+# ---------------------------------------------------------------------------
+# Canvas / structure
+# ---------------------------------------------------------------------------
+
+BG                  = "#F7F9FC"
+CARD_BG             = "#FFFFFF"
+BORDER              = "#E5EAF1"
+BORDER_HOVER        = "#CBD5E1"
+
+TEXT_PRIMARY        = NAVY
+TEXT_SECONDARY      = "#64748B"
+TEXT_TERTIARY       = "#94A3B8"
+
+
+# ---------------------------------------------------------------------------
+# Sidebar (navy)
+# ---------------------------------------------------------------------------
+
+SIDEBAR_BG_TOP      = "#14224A"
+SIDEBAR_BG_BOTTOM   = "#0A162E"
+SIDEBAR_TEXT        = "#F1F5F9"
+SIDEBAR_TEXT_MUTED  = "#A8B6CC"
+SIDEBAR_TEXT_DIM    = "#7C8BA6"  # placeholder removed below
+SIDEBAR_ACCENT      = TEAL
+SIDEBAR_ACCENT_BG   = "rgba(20,184,166,0.14)"
+SIDEBAR_BORDER      = "rgba(255,255,255,0.07)"
+SIDEBAR_MUTED       = "#8DA0BF"
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +69,8 @@ WARNING_BORDER = "#FDE68A"
 DANGER         = "#EF4444"
 DANGER_BG      = "#FEF2F2"
 
-INFO           = "#10203D"
-INFO_BG        = "#EEF1F6"
+INFO           = NAVY
+INFO_BG        = "#EEF1F8"
 
 
 # ---------------------------------------------------------------------------
@@ -77,14 +87,14 @@ SPACE_12 = "48px"
 
 RADIUS_SM = "6px"
 RADIUS_MD = "8px"
-RADIUS_LG = "14px"
+RADIUS_LG = "12px"
 
 SHADOW_SM = (
-    "0 1px 2px rgba(16,24,40,0.04), "
-    "0 1px 1px rgba(16,24,40,0.03)"
+    "0 1px 2px rgba(16,32,61,0.05), "
+    "0 1px 1px rgba(16,32,61,0.03)"
 )
-SHADOW_MD = "0 4px 16px rgba(16,24,40,0.08)"
-SHADOW_LG = "0 8px 24px rgba(16,24,40,0.12)"
+SHADOW_MD = "0 4px 16px rgba(16,32,61,0.08)"
+SHADOW_LG = "0 8px 24px rgba(16,32,61,0.12)"
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +106,8 @@ CONFIDENCE_COLORS = {
     "Medium": (WARNING, WARNING_BG),
     "Low":    (DANGER, DANGER_BG),
 }
+
+CONFIDENCE_LEGEND = "≥0.8 High · 0.5–0.8 Medium · <0.5 Low"
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +121,7 @@ def apply_theme():
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
-            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
             rel="stylesheet"
         >
         """,
@@ -119,8 +131,6 @@ def apply_theme():
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
-
         /* =====================================================
            GLOBAL
         ===================================================== */
@@ -138,7 +148,7 @@ def apply_theme():
 
         .block-container {{
             padding-top: 1.25rem !important;
-            padding-bottom: 2.5rem !important;
+            padding-bottom: 3rem !important;
             padding-left: 3rem !important;
             padding-right: 3rem !important;
             height: auto !important;
@@ -154,7 +164,7 @@ def apply_theme():
         .stApp,
         section.main,
         .block-container {{
-            background: #F7F8FA !important;
+            background: {BG} !important;
         }}
 
         /* =====================================================
@@ -168,13 +178,13 @@ def apply_theme():
         }}
 
         div[data-testid="stAlertContainer"][kind="info"] {{
-            background: #EEF1F6 !important;
-            border-left: 3px solid #10203D !important;
+            background: #EEF1F8 !important;
+            border-left: 3px solid {NAVY} !important;
             color: #1A2B4A !important;
         }}
 
         div[data-testid="stAlertContainer"][kind="warning"] {{
-            background: #FBF3E7 !important;
+            background: #FFFBEB !important;
             border-left: 3px solid #F59E0B !important;
             color: #6B4A1F !important;
         }}
@@ -226,7 +236,14 @@ def apply_theme():
                          'Segoe UI', sans-serif;
         }}
 
-        [data-testid="stIconMaterial"] {{
+        /* Streamlit renders expander/status header icons (chevron, state icon)
+           as Material Symbols ligature spans. The status state icon uses the
+           stExpanderIcon* testids, NOT stIconMaterial — so without this rule
+           the blanket `.stApp span` Inter override makes the raw ligature text
+           ("check", "keyboard_arrow_down", ...) leak next to labels such as
+           "Show full answer" / "Report complete" (untouched labels). */
+        [data-testid="stIconMaterial"],
+        [data-testid^="stExpanderIcon"] {{
             font-family: 'Material Symbols Rounded' !important;
         }}
 
@@ -243,11 +260,14 @@ def apply_theme():
         ===================================================== */
 
         h1 {{
-            font-size: 28px !important;
+            font-size: 30px !important;
             font-weight: 600 !important;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.015em;
             font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
             color: {PRIMARY} !important;
+            line-height: 1.15;
+            margin-top: 0 !important;
+            margin-bottom: 4px !important;
         }}
 
         h2, h3 {{
@@ -257,18 +277,28 @@ def apply_theme():
             font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
         }}
 
+        h2 {{ font-size: 22px !important; }}
+        h3 {{ font-size: 18px !important; }}
+
         .subtle-caption {{
             color: {TEXT_TERTIARY};
             font-size: 12px;
         }}
 
-        div[data-testid="stMarkdown"] h5,
-        .stMarkdown h5 {{
-            font-size: 17px !important;
+        h5, .ia-section-h {{
+            font-size: 16px !important;
             font-weight: 600 !important;
             color: {PRIMARY} !important;
-            margin-bottom: 12px !important;
-            letter-spacing: -0.01em;
+            margin-bottom: 10px !important;
+            letter-spacing: -0.005em;
+            font-family: 'Inter', sans-serif !important;
+        }}
+
+        .page-sub {{
+            color: {TEXT_TERTIARY};
+            font-size: 14px;
+            margin-top: -6px;
+            margin-bottom: 18px;
         }}
 
 
@@ -288,15 +318,15 @@ def apply_theme():
         div[data-testid="stMetric"] {{
             background: #FFFFFF !important;
             border: 1px solid {BORDER} !important;
-            border-left: 3px solid {GOLD} !important;
-            border-radius: 8px !important;
-            box-shadow: 0 1px 2px rgba(16, 32, 61, 0.04) !important;
-            padding: 18px 16px !important;
+            border-left: 3px solid {TEAL} !important;
+            border-radius: 10px !important;
+            box-shadow: {SHADOW_SM} !important;
+            padding: 16px 16px !important;
         }}
 
         div[data-testid="stMetric"]:hover {{
-            box-shadow: 0 6px 24px rgba(16,32,61,0.10) !important;
-            border-color: {BORDER_HOVER};
+            box-shadow: {SHADOW_MD} !important;
+            border-color: {BORDER_HOVER} !important;
         }}
 
         div[data-testid="stMetricLabel"] {{
@@ -315,21 +345,20 @@ def apply_theme():
 
 
         /* =====================================================
-           CARDS
+           CARDS (neutral, teal reserved for highlights)
         ===================================================== */
 
         div[data-testid="stVerticalBlockBorderWrapper"] > div {{
             background: #FFFFFF !important;
-            border-radius: 8px !important;
-            border: 1px solid #E4E7EC !important;
-            border-left: 3px solid {GOLD} !important;
-            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+            border-radius: 10px !important;
+            border: 1px solid {BORDER} !important;
+            box-shadow: {SHADOW_SM} !important;
         }}
 
         div[data-testid="stExpander"] {{
             border: 1px solid {BORDER} !important;
-            border-radius: 8px !important;
-            background: #F7F8FA !important;
+            border-radius: 10px !important;
+            background: {BG} !important;
         }}
 
 
@@ -348,51 +377,51 @@ def apply_theme():
         }}
 
         .stButton button:hover {{
-            background: #16305C !important;
-            border-color: {GOLD} !important;
+            background: {PRIMARY_HOVER} !important;
+            border-color: {TEAL} !important;
             transform: translateY(-1px);
         }}
 
         .stButton button[kind="primary"] {{
             background: {PRIMARY} !important;
             border: 1px solid {PRIMARY} !important;
-            box-shadow: 0 4px 14px rgba(16, 32, 61, 0.20) !important;
+            box-shadow: 0 4px 14px rgba(16, 32, 61, 0.18) !important;
             color: white !important;
         }}
 
         .stButton button[kind="primary"]:hover {{
-            background: #16305C !important;
-            border: 1px solid {GOLD} !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(16,32,61,0.18) !important;
+            background: {PRIMARY_HOVER} !important;
+            border: 1px solid {TEAL} !important;
+            box-shadow: 0 0 0 3px {TEAL_SOFT}, 0 6px 16px rgba(16,32,61,0.16) !important;
         }}
 
         div[data-testid="stTextInput"] input {{
             border-radius: 8px !important;
-            border: 1.5px solid #D8DCE3 !important;
+            border: 1.5px solid {BORDER_HOVER} !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         }}
 
         div[data-testid="stTextInput"] input:focus {{
-            border-color: {GOLD} !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT} !important;
+            border-color: {TEAL} !important;
+            box-shadow: 0 0 0 3px {TEAL_SOFT} !important;
         }}
 
 
         /* =====================================================
-           CHAT INPUT
+           CHAT INPUT  (query composer)
         ===================================================== */
 
         div[data-testid="stChatInput"] {{
             background: #FFFFFF !important;
-            border: 1.5px solid #D8DCE3 !important;
-            border-radius: 16px !important;
+            border: 1.5px solid {BORDER_HOVER} !important;
+            border-radius: 14px !important;
             box-shadow: 0 2px 8px rgba(16,32,61,0.06) !important;
             transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
         }}
 
         div[data-testid="stChatInput"]:focus-within {{
-            border-color: {GOLD} !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 18px rgba(16,32,61,0.08) !important;
+            border-color: {TEAL} !important;
+            box-shadow: 0 0 0 3px {TEAL_SOFT}, 0 6px 18px rgba(16,32,61,0.08) !important;
         }}
 
         div[data-testid="stChatInput"] * {{
@@ -400,20 +429,20 @@ def apply_theme():
         }}
 
         div[data-testid="stChatInput"] textarea {{
-            padding: 14px 8px 14px 16px !important;
-            min-height: 52px !important;
+            padding: 13px 8px 13px 16px !important;
+            min-height: 50px !important;
             line-height: 1.5 !important;
         }}
 
         div[data-testid="stChatInput"] button {{
-            border-radius: 12px !important;
+            border-radius: 10px !important;
             margin-right: 6px !important;
             transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
         }}
 
         div[data-testid="stChatInput"] button:hover {{
             transform: translateY(-1px) !important;
-            box-shadow: 0 4px 14px {GOLD_SOFT} !important;
+            box-shadow: 0 4px 14px {TEAL_SOFT} !important;
         }}
 
         div[data-testid="stChatInput"] button:active {{
@@ -428,11 +457,11 @@ def apply_theme():
         .insight-card,
         .ai-answer-card {{
             background: #FFFFFF !important;
-            border: 1px solid #E4E7EC !important;
-            border-left: 3px solid {GOLD} !important;
-            border-radius: 8px !important;
-            padding: 20px 24px !important;
-            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+            border: 1px solid {BORDER} !important;
+            border-left: 3px solid {TEAL} !important;
+            border-radius: 10px !important;
+            padding: 18px 22px !important;
+            box-shadow: {SHADOW_SM} !important;
         }}
 
         .ai-answer-card {{
@@ -441,18 +470,23 @@ def apply_theme():
 
         div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"])
         [data-testid="stChatMessageContent"] {{
-            background: #FFFFFF !important;
-            border: 1px solid #E4E7EC !important;
-            border-left: 3px solid {GOLD} !important;
-            border-radius: 8px !important;
-            padding: 20px 24px !important;
-            box-shadow: 0 1px 2px rgba(16,32,61,0.04) !important;
+            background: #F4F6FA !important;
+            border: 1px solid {BORDER} !important;
+            border-left: 3px solid {TEAL} !important;
+            border-radius: 10px !important;
+            padding: 18px 22px !important;
+            box-shadow: {SHADOW_SM} !important;
             max-width: 100% !important;
         }}
 
         div[data-testid="stChatMessage"] {{
             width: 100% !important;
             margin-bottom: 12px !important;
+        }}
+
+        div[data-testid="stChatMessageContent"],
+        .ai-answer-card {{
+            overflow-wrap: break-word;
         }}
 
         div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {{
@@ -464,7 +498,7 @@ def apply_theme():
 
         div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
         [data-testid="stChatMessageContent"] {{
-            background: #F1F5F9 !important;
+            background: #F4F6FA !important;
             border: 1px solid {BORDER} !important;
             border-radius: 16px 16px 4px 16px !important;
             padding: 12px 16px !important;
@@ -478,8 +512,8 @@ def apply_theme():
         ===================================================== */
 
         div[class*="st-key-chip_row"] div[data-testid="stPopover"] > button {{
-            background: #F1F5F9 !important;
-            border: 1px solid #E2E8F0 !important;
+            background: #F4F6FA !important;
+            border: 1px solid {BORDER} !important;
             border-radius: 999px !important;
             padding: 4px 12px !important;
             font-size: 12px !important;
@@ -489,34 +523,34 @@ def apply_theme():
         }}
 
         div[class*="st-key-conf_chip_high"] div[data-testid="stPopover"] > button {{
-            background: linear-gradient(90deg, #10B981, #34D399) !important;
-            border: none !important;
-            border-radius: 999px !important;
-            box-shadow: inset 3px 0 0 {GOLD}, 0 0 8px rgba(16,185,129,0.35) !important;
-            font-weight: 600 !important;
-            color: white !important;
+            background: {SUCCESS_BG} !important;
+            border: 1px solid #C6F6D5 !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+            color: #047857 !important;
         }}
 
         div[class*="st-key-conf_chip_medium"] div[data-testid="stPopover"] > button {{
-            background: linear-gradient(90deg, #F59E0B, #FBBF24) !important;
-            border: none !important;
-            border-radius: 999px !important;
-            box-shadow: inset 3px 0 0 {GOLD} !important;
-            font-weight: 600 !important;
-            color: white !important;
+            background: {WARNING_BG} !important;
+            border: 1px solid #FDE68A !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+            color: #B45309 !important;
         }}
 
         div[class*="st-key-conf_chip_low"] div[data-testid="stPopover"] > button {{
-            background: linear-gradient(90deg, #EF4444, #F87171) !important;
-            border: none !important;
-            border-radius: 999px !important;
-            box-shadow: inset 3px 0 0 {GOLD} !important;
-            font-weight: 600 !important;
-            color: white !important;
+            background: {DANGER_BG} !important;
+            border: 1px solid #FECACA !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+            color: #B91C1C !important;
         }}
 
         div[class*="st-key-conf_chip"] div[data-testid="stPopover"] > button p {{
-            color: white !important;
+            color: inherit !important;
             font-size: 12px !important;
         }}
 
@@ -526,8 +560,11 @@ def apply_theme():
         ===================================================== */
 
         section[data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, #0F172A 0%, #020617 100%) !important;
-            border-right: 1px solid rgba(255,255,255,0.06) !important;
+            background: linear-gradient(180deg, {SIDEBAR_BG_TOP} 0%, {SIDEBAR_BG_BOTTOM} 100%) !important;
+            border-right: 1px solid {SIDEBAR_BORDER} !important;
+            min-width: 264px !important;
+            max-width: 264px !important;
+            width: 264px !important;
         }}
 
         section[data-testid="stSidebar"] > div {{
@@ -550,7 +587,7 @@ def apply_theme():
         }}
 
         section[data-testid="stSidebar"] hr {{
-            border-color: rgba(255,255,255,0.07) !important;
+            border-color: {SIDEBAR_BORDER} !important;
             margin: {SPACE_4} 0;
         }}
 
@@ -561,17 +598,17 @@ def apply_theme():
 
         section[data-testid="stSidebarNav"] {{
             display: block !important;
-            padding-top: 4px !important;
+            padding-top: 0 !important;
             margin-bottom: 8px !important;
         }}
 
         section[data-testid="stSidebarNav"] a {{
             color: {SIDEBAR_TEXT_MUTED} !important;
-            border-radius: 8px !important;
+            border-radius: 7px !important;
             padding: 8px 12px !important;
-            font-size: 13.5px !important;
+            font-size: 14px !important;
             font-weight: 500 !important;
-            margin: 2px 0 !important;
+            margin: 1.5px 0 !important;
             transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
         }}
 
@@ -590,14 +627,41 @@ def apply_theme():
             line-height: 0 !important;
         }}
 
+        /* Icons are shown for EVERY nav item at all times - the active item is
+           distinguished by background/color, never by icon presence. */
+        section[data-testid="stSidebarNav"] a [data-testid="stNavPageIcon"] {{
+            display: inline-flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            color: {SIDEBAR_TEXT_MUTED} !important;
+        }}
+
+        section[data-testid="stSidebarNav"] a[aria-current="page"] [data-testid="stNavPageIcon"],
+        section[data-testid="stSidebarNav"] [aria-current="page"] [data-testid="stNavPageIcon"] {{
+            color: #FFFFFF !important;
+        }}
+
         section[data-testid="stSidebarNav"] a[aria-current="page"],
         section[data-testid="stSidebarNav"] [aria-current="page"],
         section[data-testid="stSidebar"] [aria-current="page"] {{
             background: {SIDEBAR_ACCENT_BG} !important;
-            color: {SIDEBAR_TEXT} !important;
+            color: #FFFFFF !important;
             box-shadow: inset 3px 0 0 {SIDEBAR_ACCENT} !important;
             font-weight: 600 !important;
-            border-radius: 8px !important;
+            border-radius: 7px !important;
+        }}
+
+        .ia-nav-label {{
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.12em !important;
+            text-transform: uppercase !important;
+            color: {SIDEBAR_TEXT_DIM} !important;
+            margin: 16px 4px 6px 4px !important;
+        }}
+
+        .ia-nav-label:first-child {{
+            margin-top: 8px !important;
         }}
 
 
@@ -611,117 +675,107 @@ def apply_theme():
         }}
 
         .ia-brand-title {{
-            font-size: 20px !important;
+            font-size: 19px !important;
             font-weight: 700 !important;
-            letter-spacing: -0.03em !important;
+            letter-spacing: -0.02em !important;
             color: {SIDEBAR_TEXT} !important;
             line-height: 1.2 !important;
+            display: flex;
+            align-items: center;
         }}
 
         .ia-brand-title span {{
             color: {SIDEBAR_ACCENT} !important;
         }}
 
-        .ia-brand-mark {{
-            color: {SIDEBAR_ACCENT} !important;
-            margin-right: 6px !important;
-            font-size: 18px !important;
+        .ia-brand-mark svg {{
+            width: 26px;
+            height: 26px;
+            margin-right: 8px;
         }}
 
         .ia-brand-subtitle {{
             margin-top: 3px !important;
             font-size: 10px !important;
             font-weight: 600 !important;
-            color: {SIDEBAR_TEXT_MUTED} !important;
+            color: {SIDEBAR_TEXT_DIM} !important;
             letter-spacing: 0.10em !important;
             text-transform: uppercase !important;
         }}
 
 
         /* =====================================================
-           CHAT HERO
+           CHAT HERO (compact)
         ===================================================== */
 
         .ia-hero {{
             text-align: center;
-            animation: iaHeroFade 0.5s ease both;
-            margin: 4px 0 8px 0 !important;
-            padding: 6px 0 10px 0 !important;
+            animation: iaHeroFade 0.4s ease both;
+            margin: 2vh auto 0 auto !important;
+            padding: 0 !important;
+            max-width: 720px;
         }}
 
         .ia-logo {{
-            width: 100%;
             line-height: 0;
             text-align: center;
         }}
 
         .ia-logo svg {{
-            height: 68px;
+            height: 72px;
             width: auto;
             max-width: 100%;
             display: inline-block;
-            transition: transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease;
-            opacity: 0.98;
-        }}
-
-        .ia-logo:hover svg {{
-            transform: translateY(-3px);
-            opacity: 1;
-            filter: drop-shadow(0 6px 14px rgba(16,32,61,0.12));
+            transition: opacity 0.2s ease;
+            opacity: 0.99;
         }}
 
         .ia-hero-name {{
-            font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
-            font-size: 30px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 24px;
             font-weight: 700;
-            letter-spacing: -0.015em;
+            letter-spacing: -0.02em;
             color: {PRIMARY};
-            margin: 10px 0 0 0;
+            margin: 8px 0 0 0;
             line-height: 1.15;
         }}
 
         .ia-hero-name span {{
-            color: {GOLD};
+            color: {TEAL};
         }}
 
         .ia-hero-sub {{
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
+            font-size: 13.5px;
+            font-weight: 500;
+            letter-spacing: 0.01em;
             color: {TEXT_SECONDARY};
-            margin: 4px 0 0 0;
+            margin: 2px 0 0 0;
             line-height: 1.4;
         }}
 
         .ia-hero-desc {{
-            font-size: 13.5px;
+            font-size: 12.5px;
             font-weight: 400;
             color: {TEXT_TERTIARY};
-            max-width: 560px;
-            margin: 8px auto 0 auto;
-            line-height: 1.55;
+            max-width: 520px;
+            margin: 4px auto 0 auto;
+            line-height: 1.5;
         }}
 
         .ia-badge {{
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            margin-top: 12px;
-            font-size: 11.5px;
+            margin-top: 8px;
+            font-size: 11px;
             font-weight: 600;
-            letter-spacing: 0.05em;
-            color: {GOLD};
-            background: rgba(20,184,166,0.10);
+            letter-spacing: 0.04em;
+            color: {TEAL};
+            background: {TEAL_SOFT};
             border: 1px solid rgba(20,184,166,0.28);
             border-radius: 999px;
-            padding: 4px 14px;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }}
-
-        .ia-badge:hover {{
-            transform: translateY(-1px);
-            box-shadow: 0 3px 10px {GOLD_SOFT};
+            padding: 3px 12px;
         }}
 
         .ia-badge::before {{
@@ -729,41 +783,14 @@ def apply_theme():
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: {GOLD};
+            background: {TEAL};
             flex: 0 0 auto;
-        }}
-
-        .ia-hero-welcome {{
-            margin-top: 18px;
-            padding-top: 14px;
-            border-top: 1px solid {BORDER};
-        }}
-
-        .ia-hero-welcome-title {{
-            font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
-            font-size: 22px;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-            color: {PRIMARY};
-            margin-bottom: 3px;
-        }}
-
-        .ia-hero-welcome-sub {{
-            font-size: 13.5px;
-            color: {TEXT_SECONDARY};
-        }}
-
-        .ia-logo .tagline {{
-            letter-spacing: 1px !important;
-            text-transform: capitalize !important;
-            font-weight: 600 !important;
-            fill: {TEXT_TERTIARY} !important;
         }}
 
         .ia-hero--compact {{
             text-align: left;
-            margin: 0 0 4px 0 !important;
-            padding: 0 0 4px 0 !important;
+            margin: 0 0 2px 0 !important;
+            padding: 0 0 2px 0 !important;
         }}
 
         .ia-hero--compact .ia-logo {{
@@ -774,35 +801,157 @@ def apply_theme():
         }}
 
         .ia-hero--compact .ia-logo svg {{
-            height: 40px;
+            height: 34px;
         }}
 
         .ia-hero--compact .ia-hero-name {{
             display: inline-flex;
             vertical-align: middle;
-            font-size: 20px;
+            font-size: 19px;
             margin: 0;
         }}
 
         .ia-hero--compact .ia-hero-sub {{
-            font-size: 13px;
-            margin: 5px 0 0 0;
+            font-size: 12px;
+            margin: 4px 0 0 0;
         }}
 
         .ia-hero--compact .ia-badge {{
-            margin-top: 7px;
-            font-size: 11px;
-            padding: 3px 11px;
+            margin-top: 6px;
+            font-size: 10.5px;
+            padding: 3px 10px;
         }}
 
         @keyframes iaHeroFade {{
-            from {{ opacity: 0; transform: translateY(6px); }}
+            from {{ opacity: 0; transform: translateY(4px); }}
             to   {{ opacity: 1; transform: translateY(0); }}
         }}
 
         @media (max-width: 768px) {{
-            .ia-logo svg {{ height: 54px; }}
-            .ia-hero-name {{ font-size: 26px; }}
+            .ia-logo svg {{ height: 38px; }}
+            .ia-hero-name {{ font-size: 21px; }}
+        }}
+
+
+        /* =====================================================
+           PRE-AUTH LANDING / AUTH VIEWS (entry experience)
+        ===================================================== */
+
+        .landing-nav {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }}
+
+        .landing-nav-divider {{
+            border: none;
+            border-top: 1px solid {BORDER};
+            margin: 14px 0 0 0;
+        }}
+
+        .landing-hero {{
+            text-align: center;
+            margin: 7vh auto 0 auto !important;
+            max-width: 760px;
+            animation: iaHeroFade 0.4s ease both;
+        }}
+
+        .landing-title {{
+            font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
+            font-size: 52px !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.03em !important;
+            color: {PRIMARY} !important;
+            line-height: 1.05;
+            margin: 0 !important;
+        }}
+
+        .landing-title span {{
+            color: {TEAL} !important;
+        }}
+
+        .landing-tagline {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 15.5px;
+            font-weight: 400;
+            color: {TEXT_SECONDARY};
+            max-width: 560px;
+            margin: 14px auto 0 auto;
+            line-height: 1.6;
+        }}
+
+        .landing-cta-gap {{
+            height: 26px;
+        }}
+
+        /* Nav "Sign in" = outline, not filled */
+        [class*="st-key-landing_signin_btn"] .stButton button,
+        [class*="st-key-landing_signin_btn"] button {{
+            background: transparent !important;
+            border: 1px solid {BORDER_HOVER} !important;
+            color: {TEXT_SECONDARY} !important;
+            box-shadow: none !important;
+            font-weight: 600 !important;
+            height: 36px !important;
+        }}
+        [class*="st-key-landing_signin_btn"] button:hover {{
+            border-color: {PRIMARY} !important;
+            color: {PRIMARY} !important;
+            background: transparent !important;
+            transform: none !important;
+        }}
+
+        /* Hero primary CTA = filled teal */
+        [class*="st-key-landing_demo_btn"] .stButton button,
+        [class*="st-key-landing_demo_btn"] button {{
+            background: {TEAL} !important;
+            border: 1px solid {TEAL} !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 8px 20px rgba(20, 184, 166, 0.28) !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            height: 44px !important;
+        }}
+        [class*="st-key-landing_demo_btn"] button:hover {{
+            background: #0EA5A0 !important;
+            border-color: #0EA5A0 !important;
+            box-shadow: 0 10px 24px rgba(20, 184, 166, 0.30) !important;
+            transform: translateY(-1px) !important;
+        }}
+
+        /* Hero "Sign in" link = text link, no button chrome */
+        [class*="st-key-hero_signin_btn"] .stButton button,
+        [class*="st-key-hero_signin_btn"] button {{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #0F766E !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            height: auto !important;
+        }}
+        [class*="st-key-hero_signin_btn"] button:hover {{
+            color: {PRIMARY} !important;
+            text-decoration: underline !important;
+            background: transparent !important;
+            transform: none !important;
+        }}
+
+        /* Auth view "Back" = outline */
+        [class*="st-key-auth_back_btn"] .stButton button,
+        [class*="st-key-auth_back_btn"] button {{
+            background: transparent !important;
+            border: 1px solid {BORDER_HOVER} !important;
+            color: {TEXT_SECONDARY} !important;
+            box-shadow: none !important;
+            font-weight: 600 !important;
+            height: 36px !important;
+        }}
+        [class*="st-key-auth_back_btn"] button:hover {{
+            border-color: {PRIMARY} !important;
+            color: {PRIMARY} !important;
+            background: transparent !important;
+            transform: none !important;
         }}
 
 
@@ -826,10 +975,10 @@ def apply_theme():
         ===================================================== */
 
         section[data-testid="stSidebar"] div[role="radiogroup"] {{
-            background: #1E293B !important;
-            border-radius: 12px !important;
+            background: rgba(255,255,255,0.05) !important;
+            border-radius: 10px !important;
             padding: 4px !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
+            border: 1px solid {SIDEBAR_BORDER} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child,
@@ -844,23 +993,23 @@ def apply_theme():
         section[data-testid="stSidebar"] div[role="radiogroup"] label {{
             flex: 1 !important;
             text-align: center !important;
-            border-radius: 9px !important;
-            padding: 9px 10px !important;
+            border-radius: 8px !important;
+            padding: 8px 10px !important;
             font-size: 12.5px !important;
             font-weight: 500 !important;
             color: {SIDEBAR_TEXT_MUTED} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
-            background: {GOLD} !important;
-            color: {PRIMARY} !important;
+            background: {TEAL} !important;
+            color: {NAVY} !important;
             font-weight: 600 !important;
-            box-shadow: 0 0 14px {GOLD_SOFT} !important;
+            box-shadow: 0 0 14px {TEAL_SOFT} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked),
         section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) * {{
-            color: {PRIMARY} !important;
+            color: {NAVY} !important;
         }}
 
         section[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked)):hover {{
@@ -868,13 +1017,47 @@ def apply_theme():
             color: #E2E8F0 !important;
         }}
 
+        /* Sidebar nav + page-header icons must stay clearly visible on the dark
+           navy background. Streamlit paints nav FontIcon spans with the light-
+           theme text color inline; force them light (white when active/hovered). */
+        section[data-testid="stSidebar"] [data-testid="stIconMaterial"] {{
+            color: #CBD5E1 !important;
+        }}
+        section[data-testid="stSidebar"] [data-testid="stSidebarNavLink"]:hover [data-testid="stIconMaterial"],
+        section[data-testid="stSidebar"] [data-testid="stSidebarNavLink"][aria-current="page"] [data-testid="stIconMaterial"] {{
+            color: #FFFFFF !important;
+        }}
+
 
         /* =====================================================
-           HISTORY ROWS
+           SIDEBAR HISTORY ROWS
         ===================================================== */
 
+        .ia-history-empty {{
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed rgba(255,255,255,0.14);
+            border-radius: {RADIUS_MD};
+            padding: {SPACE_4};
+            text-align: center;
+            margin: 4px 2px;
+        }}
+
+        .ia-empty-title {{
+            color: {SIDEBAR_TEXT};
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0;
+        }}
+
+        .ia-empty-text {{
+            color: {SIDEBAR_TEXT_DIM};
+            font-size: 12px;
+            margin-top: 3px;
+            line-height: 1.4;
+        }}
+
         div[class*="st-key-history_row"] {{
-            border-radius: 8px !important;
+            border-radius: 7px !important;
             margin: 2px 2px !important;
             transition: background 0.15s ease, box-shadow 0.15s ease !important;
         }}
@@ -886,7 +1069,7 @@ def apply_theme():
         div[class*="st-key-history_row_active"] {{
             background: {SIDEBAR_ACCENT_BG} !important;
             box-shadow: inset 3px 0 0 {SIDEBAR_ACCENT} !important;
-            border-radius: 8px !important;
+            border-radius: 7px !important;
         }}
 
         div[class*="st-key-history_row_active"]:hover {{
@@ -904,7 +1087,7 @@ def apply_theme():
             font-weight: 500 !important;
             padding: 9px 12px !important;
             width: 100% !important;
-            border-radius: 7px !important;
+            border-radius: 6px !important;
             transition: color 0.15s ease !important;
         }}
 
@@ -913,7 +1096,7 @@ def apply_theme():
         }}
 
         div[class*="st-key-history_row_active"] button {{
-            color: {SIDEBAR_TEXT} !important;
+            color: #FFFFFF !important;
             font-weight: 600 !important;
         }}
 
@@ -932,17 +1115,17 @@ def apply_theme():
         section[data-testid="stSidebar"] button[kind="primary"] {{
             width: 100% !important;
             min-height: 40px !important;
-            background: {GOLD} !important;
-            border: 1px solid {GOLD} !important;
+            background: {TEAL} !important;
+            border: 1px solid {TEAL} !important;
             border-radius: 6px !important;
-            color: {PRIMARY} !important;
+            color: {NAVY} !important;
             font-size: 13px !important;
             font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(20,184,166,0.30) !important;
+            box-shadow: 0 2px 10px rgba(20,184,166,0.25) !important;
         }}
 
         section[data-testid="stSidebar"] button[kind="primary"] p {{
-            color: {PRIMARY} !important;
+            color: {NAVY} !important;
             font-size: 13px !important;
             font-weight: 600 !important;
             margin: 0 !important;
@@ -951,35 +1134,102 @@ def apply_theme():
         section[data-testid="stSidebar"] button[kind="primary"]:hover {{
             background: #2DD4BF !important;
             border: 1px solid #2DD4BF !important;
-            box-shadow: 0 0 0 3px {GOLD_SOFT}, 0 6px 16px rgba(20,184,166,0.35) !important;
+            box-shadow: 0 0 0 3px {TEAL_SOFT} !important;
         }}
 
 
         /* =====================================================
-           EXAMPLE QUESTION BUTTONS
+           SUGGESTED ANALYSIS CARDS
         ===================================================== */
 
-        div[class*="st-key-ex_"] .stButton button {{
-            background: #FFFFFF !important;
-            border: 1px solid {BORDER} !important;
-            border-radius: 14px !important;
-            color: {TEXT_SECONDARY} !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-            padding: 14px 12px !important;
-            min-height: 64px !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-            white-space: normal !important;
-            line-height: 1.35 !important;
-            cursor: pointer !important;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease !important;
+        .ia-subhead {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: {PRIMARY};
+            text-align: center;
+            margin: 18px 0 4px 0;
+            line-height: 1.25;
         }}
 
-        div[class*="st-key-ex_"] .stButton button:hover {{
-            border-color: {GOLD} !important;
-            box-shadow: 0 10px 24px {PRIMARY_SOFT} !important;
-            transform: translateY(-2px) !important;
+        .ia-suggestion-label {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: {TEXT_TERTIARY};
+            text-align: center;
+            margin: 22px 0 10px 0;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button {{
+            background: #FFFFFF !important;
+            border: 1px solid {BORDER} !important;
+            border-radius: 12px !important;
+            box-shadow: {SHADOW_SM} !important;
+            color: {TEXT_SECONDARY} !important;
+            font-size: 13px !important;
+            font-weight: 400 !important;
+            padding: 14px 16px !important;
+            min-height: 92px !important;
+            white-space: normal !important;
+            line-height: 1.45 !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            text-align: left !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease !important;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button [data-testid="stBaseButton-label"] {{
+            justify-content: flex-start !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            text-align: left !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button p {{
+            margin: 0 !important;
+            text-align: left !important;
+            color: {TEXT_SECONDARY} !important;
+            font-size: 13px !important;
+            white-space: pre-line !important;
+            line-height: 1.45 !important;
+            display: block !important;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button p::first-line {{
             color: {PRIMARY} !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button:hover {{
+            border-color: #BFD5E6 !important;
+            box-shadow: {SHADOW_MD} !important;
+            transform: translateY(-1px) !important;
+        }}
+
+        /* Keep suggestion-card icons teal and small */
+        div[class*="st-key-sugg_"] .stButton button [data-testid="stBaseButton-icon"] svg {{
+            color: {TEAL} !important;
+            width: 15px !important;
+            height: 15px !important;
+        }}
+
+        div[class*="st-key-sugg_"] .stButton button [data-testid="stBaseButton-icon"] {{
+            color: {TEAL} !important;
+            font-size: 16px !important;
+            margin-right: 0 !important;
+            margin-bottom: 2px !important;
         }}
 
 
@@ -994,9 +1244,159 @@ def apply_theme():
         select:focus-visible,
         [data-testid="stBaseButton"]:focus-visible,
         [data-testid="stChatInput"] *:focus-visible {{
-            outline: 2px solid {PRIMARY} !important;
+            outline: 2px solid {TEAL} !important;
             outline-offset: 2px !important;
-            box-shadow: 0 0 0 3px {PRIMARY_SOFT} !important;
+            box-shadow: 0 0 0 3px {TEAL_SOFT} !important;
+        }}
+
+
+        /* =====================================================
+           CHIP ROW (wrap on narrow screens)
+        ===================================================== */
+
+        div[class*="st-key-chip_row"] {{
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+
+        div[class*="st-key-chip_row"] [data-testid="stColumn"] {{
+            flex: 0 0 auto !important;
+            width: auto !important;
+        }}
+
+
+        /* =====================================================
+           EMPTY STATE
+        ===================================================== */
+
+        .ia-empty-state {{
+            background: #FFFFFF;
+            border: 1px solid {BORDER};
+            border-radius: 12px;
+            padding: 28px 20px;
+            text-align: center;
+            color: {TEXT_SECONDARY};
+            font-size: 14px;
+            line-height: 1.5;
+            margin-top: 6px;
+        }}
+
+
+        /* =====================================================
+           REDUCED MOTION
+        ===================================================== */
+
+        @media (prefers-reduced-motion: reduce) {{
+            *,
+            *::before,
+            *::after {{
+                animation: none !important;
+                transition: none !important;
+                transform: none !important;
+            }}
+        }}
+
+        /* =====================================================
+           PROCESSING STEP INDICATOR (Chat page st.status body)
+        ===================================================== */
+
+        .ia-steps {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin: 2px 0 0;
+        }}
+
+        .ia-step {{
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 13.5px;
+            line-height: 1.35;
+        }}
+
+        .ia-step-icon {{
+            width: 17px;
+            height: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }}
+
+        .ia-step-icon.done {{
+            color: #14B8A6;
+            font-weight: 700;
+            font-size: 13px;
+        }}
+
+        .ia-step.active .ia-step-text {{
+            color: #10203D;
+            font-weight: 600;
+        }}
+
+        .ia-step.done .ia-step-text {{
+            color: #94A3B8;
+        }}
+
+        .ia-step.pending .ia-step-text {{
+            color: #B6BECB;
+        }}
+
+        .ia-spinner {{
+            width: 13px;
+            height: 13px;
+            border: 2px solid #D3DBE5;
+            border-top-color: #14B8A6;
+            border-radius: 50%;
+            display: inline-block;
+            animation: ia-spin 0.8s linear infinite;
+        }}
+
+        @keyframes ia-spin {{
+            to {{
+                transform: rotate(360deg);
+            }}
+        }}
+
+        /* =====================================================
+           PERSISTED "ANALYSIS COMPLETE" SUMMARY (Chat messages)
+           Collapsed-by-default chrome-less toggle holding the
+           finished step checklist so it never vanishes after the
+           rerun that swaps the live st.status for the answer card.
+        ===================================================== */
+
+        div[class*="st-key-proc_"] [data-testid="stExpander"] {{
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 0 2px !important;
+        }}
+        div[class*="st-key-proc_"] [data-testid="stExpander"] summary {{
+            color: #0F766E !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 4px 0 4px 2px !important;
+            min-height: 0 !important;
+            background: transparent !important;
+            cursor: pointer !important;
+            letter-spacing: 0.1px !important;
+        }}
+        div[class*="st-key-proc_"] [data-testid="stExpander"] summary [data-testid="stIconMaterial"] {{
+            color: #0F766E !important;
+            font-size: 15px !important;
+        }}
+        div[class*="st-key-proc_"] [data-testid="stExpanderDetails"] {{
+            border-left: 2px solid #CCF5F0 !important;
+            padding: 8px 0 2px 12px !important;
+            margin: 2px 0 0 2px !important;
+        }}
+        div[class*="st-key-proc_"] .ia-steps {{
+            gap: 5px;
+            margin: 0;
         }}
 
         </style>
@@ -1004,78 +1404,123 @@ def apply_theme():
         unsafe_allow_html=True,
     )
 
-    # Fallback JS for user message alignment
+    # Fallback JS for user message alignment and sidebar brand
     st.markdown(
         """
-        <script>
-        function forceAlignUserMessages() {
-            const docs = [document, window.parent.document];
-            docs.forEach(doc => {
-                const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
-                messages.forEach(msg => {
-                    const isUser = msg.querySelector('[data-testid="stChatMessageAvatarUser"]')
-                                || msg.querySelector('img[alt="user"]');
-                    if (isUser) {
-                        msg.style.setProperty('display', 'flex', 'important');
-                        msg.style.setProperty('flex-direction', 'row-reverse', 'important');
-                        msg.style.setProperty('justify-content', 'flex-start', 'important');
+<script>
+function forceAlignUserMessages(doc) {
+    const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
+    messages.forEach(msg => {
+        const isUser = msg.querySelector('[data-testid="stChatMessageAvatarUser"]')
+                    || msg.querySelector('img[alt="user"]');
+        if (isUser) {
+            msg.style.setProperty('display', 'flex', 'important');
+            msg.style.setProperty('flex-direction', 'row-reverse', 'important');
+            msg.style.setProperty('justify-content', 'flex-start', 'important');
 
-                        const content = msg.querySelector('[data-testid="stChatMessageContent"]');
-                        if (content) {
-                            content.style.setProperty('background', '#F1F5F9', 'important');
-                            content.style.setProperty('border', '1px solid #E8EAEE', 'important');
-                            content.style.setProperty('border-radius', '16px 16px 4px 16px', 'important');
-                            content.style.setProperty('padding', '12px 16px', 'important');
-                            content.style.setProperty('max-width', '70%', 'important');
-                            content.style.setProperty('margin-left', 'auto', 'important');
-                        }
-                    }
-                });
-            });
+            const content = msg.querySelector('[data-testid="stChatMessageContent"]');
+            if (content) {
+                content.style.setProperty('background', 'rgba(20,184,166,0.10)', 'important');
+                content.style.setProperty('border', '1px solid rgba(20,184,166,0.30)', 'important');
+                content.style.setProperty('border-radius', '16px 16px 4px 16px', 'important');
+                content.style.setProperty('padding', '12px 16px', 'important');
+                content.style.setProperty('max-width', '70%', 'important');
+                content.style.setProperty('margin-left', 'auto', 'important');
+            }
         }
+    });
+}
 
-        function ensureSidebarBrand() {
-            const docs = [document, window.parent.document];
-            docs.forEach(doc => {
-                const content = doc.querySelector('[data-testid="stSidebarContent"]');
-                if (!content) return;
-                if (content.querySelector('.ia-brand')) return;
-                const nav = doc.querySelector('[data-testid="stSidebarNav"]');
-                const div = doc.createElement('div');
-                div.className = 'ia-brand';
-                div.innerHTML =
-                    '<div class="ia-brand-title">' +
-                    '<span class="ia-brand-mark">✦</span> Insight<span>AI</span>' +
-                    '</div>' +
-                    '<div class="ia-brand-subtitle">Business Intelligence</div>';
-                if (nav) content.insertBefore(div, nav);
-                else content.appendChild(div);
-            });
+function addSidebarSectionLabels(doc) {
+    const content = doc.querySelector('[data-testid="stSidebarContent"]');
+    if (!content) return;
+    const nav = doc.querySelector('[data-testid="stSidebarNav"]');
+    if (nav && !content.querySelector('.ia-brand-nav-label')) {
+        const lab = doc.createElement('div');
+        lab.className = 'ia-nav-label ia-brand-nav-label';
+        lab.textContent = 'MAIN';
+        content.insertBefore(lab, nav);
+    }
+    if (nav && !content.querySelector('.ia-analysis-nav-label')) {
+        const anchors = Array.from(nav.querySelectorAll('a'));
+        const historyAnchor = anchors.find(
+            a => (a.textContent || '').trim().toLowerCase().includes('history')
+        );
+        if (historyAnchor) {
+            const lab2 = doc.createElement('div');
+            lab2.className = 'ia-nav-label ia-analysis-nav-label';
+            lab2.textContent = 'ANALYSIS';
+            nav.insertBefore(lab2, historyAnchor);
         }
+    }
+}
 
-        forceAlignUserMessages();
-        ensureSidebarBrand();
-        const observer = new MutationObserver(() => {
-            forceAlignUserMessages();
-            ensureSidebarBrand();
-        });
-        observer.observe(window.parent.document.body, { childList: true, subtree: true });
-        setInterval(() => {
-            forceAlignUserMessages();
-            ensureSidebarBrand();
-        }, 1000);
-        </script>
+function attachCritiqueTooltips(doc) {
+    var CONFIDENCE_HELP = 'Confidence scale: \u22650.8 High \u00B7 0.5\u20130.8 Medium \u00B7 <0.5 Low';
+    var CRITIQUE_HELP = 'An internal review step that checks the answer against source data before it is returned to you.';
+    const nodes = doc.querySelectorAll('[data-testid="stPopover"] > button');
+    nodes.forEach(btn => {
+        const txt = (btn.textContent || '').trim();
+        const lower = txt.toLowerCase();
+        if (lower.indexOf('critique:') === 0) {
+            btn.setAttribute('title', CRITIQUE_HELP);
+        } else if (/(high|medium|low)\s*\u00B7/.test(lower)) {
+            btn.setAttribute('title', CONFIDENCE_HELP);
+        }
+    });
+}
+
+function watchDoc(doc) {
+    if (!doc || doc.__iaWatched) return;
+    doc.__iaWatched = true;
+    const apply = () => {
+        forceAlignUserMessages(doc);
+        addSidebarSectionLabels(doc);
+        attachCritiqueTooltips(doc);
+    };
+    if (doc.readyState === 'loading') {
+        doc.addEventListener('DOMContentLoaded', apply);
+    } else {
+        apply();
+    }
+    const observer = new MutationObserver(apply);
+    observer.observe(doc.body, { childList: true, subtree: true });
+}
+
+watchDoc(document);
+watchDoc(window.parent.document);
+</script>
         """,
         unsafe_allow_html=True,
     )
 
+
+# ---------------------------------------------------------------------------
+# Layout helpers
+# ---------------------------------------------------------------------------
 
 def spacer(size: str = "md"):
     st.markdown(f'<div class="spacer-{size}"></div>', unsafe_allow_html=True)
 
 
 def section_label(text: str):
-    st.markdown(f'<div class="sb-label">{text}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sb-label">{html.escape(text)}</div>', unsafe_allow_html=True)
+
+
+def page_header(title: str, subtitle: str = ""):
+    st.title(title)
+    if subtitle:
+        st.markdown(
+            f'<p class="page-sub">{html.escape(subtitle)}</p>',
+            unsafe_allow_html=True,
+        )
+
+
+def section_header(text: str):
+    st.markdown(
+        f'<div class="ia-section-label" style="color:{TEXT_TERTIARY}">{html.escape(text)}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_sidebar_brand():
@@ -1083,7 +1528,14 @@ def render_sidebar_brand():
         """
         <div class="ia-brand">
             <div class="ia-brand-title">
-                <span class="ia-brand-mark">✦</span> Insight<span>AI</span>
+                <span class="ia-brand-mark" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 96 96" fill="none">
+                        <rect x="6" y="6" width="84" height="84" rx="20" fill="#10203D"/>
+                        <path d="M24 64 L44 46 L56 54 L70 36" stroke="#FFFFFF" stroke-width="8"
+                            stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="70" cy="36" r="7" fill="#14B8A6"/>
+                    </svg>
+                </span> Insight<span>AI</span>
             </div>
             <div class="ia-brand-subtitle">Business Intelligence</div>
         </div>
@@ -1107,38 +1559,81 @@ def app_logo_svg() -> str:
     return _LOGO_SVG_CACHE
 
 
+_FAVICON_SVG_CACHE = None
+
+
+def favicon_mark_svg() -> str:
+    """Return the favicon mark (logo/favicon.svg) as raw inline SVG markup.
+
+    Single source of truth for the small brand icon: every in-page header
+    lockup and the browser-tab favicon share this exact art.
+    """
+    global _FAVICON_SVG_CACHE
+    if _FAVICON_SVG_CACHE is None:
+        favicon_path = pathlib.Path(__file__).resolve().parent.parent / "logo" / "favicon.svg"
+        try:
+            _FAVICON_SVG_CACHE = favicon_path.read_text(encoding="utf-8")
+        except OSError:
+            _FAVICON_SVG_CACHE = ""
+    return _FAVICON_SVG_CACHE
+
+
+# ---------------------------------------------------------------------------
+# Chips / badges
+# ---------------------------------------------------------------------------
+
 def confidence_badge_html(label: str, score: float) -> str:
     label = html.escape(str(label))
     score_txt = f"{score:.2f}"
     if label == "High":
-        return (
-            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
-            f'border-radius:999px;background:linear-gradient(90deg,#10B981,#34D399);'
-            f'color:white;box-shadow:inset 3px 0 0 #14B8A6,0 0 8px rgba(16,185,129,0.35);'
-            f'font-family:\'IBM Plex Mono\',monospace;">'
-            f'{label} · {score_txt}</span>'
-        )
+        bg, fg, bd = SUCCESS_BG, "#047857", "#A7F3D0"
     elif label == "Medium":
-        return (
-            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
-            f'border-radius:999px;background:linear-gradient(90deg,#F59E0B,#FBBF24);'
-            f'color:white;box-shadow:inset 3px 0 0 #14B8A6;'
-            f'font-family:\'IBM Plex Mono\',monospace;">'
-            f'{label} · {score_txt}</span>'
-        )
+        bg, fg, bd = WARNING_BG, "#B45309", "#FDE68A"
     else:
-        return (
-            f'<span style="font-size:11px;font-weight:600;padding:4px 12px;'
-            f'border-radius:999px;background:linear-gradient(90deg,#EF4444,#F87171);'
-            f'color:white;box-shadow:inset 3px 0 0 #14B8A6;'
-            f'font-family:\'IBM Plex Mono\',monospace;">'
-            f'{label} · {score_txt}</span>'
-        )
+        bg, fg, bd = DANGER_BG, "#B91C1C", "#FECACA"
+    return (
+        f'<span style="font-size:11px;font-weight:500;padding:3px 10px;'
+        f'border-radius:6px;background:{bg};color:{fg};border:1px solid {bd};'
+        f'font-family:\'IBM Plex Mono\',monospace;">'
+        f'{label} · {score_txt}</span>'
+    )
+
+
+def confidence_legend() -> str:
+    """HTML 'ⓘ' carrying the confidence scale as a native hover tooltip.
+
+    Reusable everywhere confidence is shown (chat, dashboard, history) so the
+    thresholds can never drift between pages: "≥0.8 High · 0.5–0.8 Medium · <0.5 Low".
+    """
+    return (
+        f'<span title="{html.escape(CONFIDENCE_LEGEND)}" '
+        f'style="cursor:help;margin-left:5px;font-size:11.5px;'
+        f'color:{TEXT_TERTIARY};">ⓘ</span>'
+    )
+
+
+_STATUS_BADGES = {
+    "neutral": ("#F4F6FA", TEXT_SECONDARY),
+    "success": (SUCCESS_BG, "#047857"),
+    "warning": (WARNING_BG, "#B45309"),
+    "danger":  (DANGER_BG, "#B91C1C"),
+    "info":    (INFO_BG, NAVY),
+    "teal":    ("#E6FBFA", TEAL),
+}
+
+
+def status_badge(label: str, tone: str = "neutral"):
+    bg, fg = _STATUS_BADGES.get(tone, _STATUS_BADGES["neutral"])
+    return (
+        f'<span style="font-size:11px;font-weight:600;padding:3px 10px;'
+        f'border-radius:999px;background:{bg};color:{fg};display:inline-block;'
+        f'margin-right:6px;">{html.escape(str(label))}</span>'
+    )
 
 
 def source_tag_html(label: str) -> str:
     return (
-        f'<span style="font-size:11px;color:{TEXT_SECONDARY};background:#F1F5F9;'
+        f'<span style="font-size:11px;color:{TEXT_SECONDARY};background:#F4F6FA;'
         f'padding:3px {SPACE_2};border-radius:{RADIUS_SM};margin-right:4px;">{label}</span>'
     )
 
@@ -1165,18 +1660,81 @@ def severity_icon(label: str) -> str:
 def mono(value: str) -> str:
     return f'<span class="mono-num">{value}</span>'
 
+
+# ---------------------------------------------------------------------------
+# Cards / empty state
+# ---------------------------------------------------------------------------
+
+def empty_state(message: str):
+    st.markdown(
+        f'<div class="ia-empty-state">{message}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def stat_card(label: str, value: str, delta: str = "", accent: str = TEAL):
+    """Compact technical card (performance monitor)."""
+    st.markdown(
+        f"""
+        <div style="
+            background:#FFFFFF; border:1px solid {BORDER};
+            border-top:3px solid {accent}; border-radius:12px;
+            padding:14px 16px; box-shadow:{SHADOW_SM};
+        ">
+            <div style="font-size:11px; font-weight:600; color:{TEXT_SECONDARY}; letter-spacing:0.4px;
+                text-transform:uppercase; margin-bottom:6px;">{label}</div>
+            <div style="font-size:24px; font-weight:700; color:#0F172A; line-height:1.1;">{value}</div>
+            <div style="font-size:12px; color:{TEXT_TERTIARY}; margin-top:5px;">{delta}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def metric_card(label: str, value: str, delta: str = "", accent: str = TEAL):
+    """Larger KPI card for analytics highlights."""
+    st.markdown(
+        f"""
+        <div style="
+            background:#FFFFFF; border:1px solid {BORDER};
+            border-left:3px solid {accent}; border-radius:12px;
+            padding:18px 18px; box-shadow:0 1px 3px rgba(16,24,40,0.04);
+        ">
+            <div style="font-size:12px; font-weight:600; color:{TEXT_SECONDARY}; letter-spacing:0.4px;
+                text-transform:uppercase; margin-bottom:10px;">{label}</div>
+            <div style="font-size:26px; font-weight:700; color:{TEXT_PRIMARY}; line-height:1.1;
+                font-family:'IBM Plex Mono',monospace;">{value}</div>
+            <div style="font-size:12.5px; color:{TEXT_TERTIARY}; margin-top:6px;">{delta}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def small_logo_html():
-    return '''
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom: 18px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 96 96" fill="none">
-        <rect x="10" y="48" width="16" height="36" rx="3" fill="#0F172A"/>
-        <rect x="32" y="30" width="16" height="54" rx="3" fill="#0F172A"/>
-        <rect x="54" y="12" width="16" height="72" rx="3" fill="#0F172A"/>
-        <path d="M14 60 L82 18" stroke="#14B8A6" stroke-width="7" stroke-linecap="round"/>
-        <circle cx="82" cy="18" r="8" fill="#14B8A6"/>
-      </svg>
-      <span style="font-family:'Inter',sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.5px;">
-        <span style="color:#0F172A;">Insight</span><span style="color:#14B8A6;">AI</span>
-      </span>
-    </div>
-    '''
+    mark = favicon_mark_svg().strip()
+    if not mark:
+        mark = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" '
+            'viewBox="0 0 96 96" fill="none">'
+            '<rect x="6" y="6" width="84" height="84" rx="20" fill="#10203D"/>'
+            '<path d="M24 64 L44 46 L56 54 L70 36" stroke="#FFFFFF" '
+            'stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>'
+            '<circle cx="70" cy="36" r="7" fill="#14B8A6"/>'
+            "</svg>"
+        )
+    else:
+        mark = mark.replace("<svg ", '<svg style="width:34px;height:34px;" ', 1)
+    span = (
+        "<span style=\"font-family:'Inter',sans-serif; font-size:19px; "
+        "font-weight:700; letter-spacing:-0.5px;\">"
+        '<span style="color:#10203D;">Insight</span>'
+        '<span style="color:#14B8A6;">AI</span>'
+        "</span>"
+    )
+    return (
+        '<div style="display:flex; align-items:center; gap:10px; margin-bottom: 8px;">'
+        + mark
+        + span
+        + "</div>"
+    )

@@ -7,6 +7,7 @@ UI-agnostic: this module has zero Streamlit dependency.
 
 from __future__ import annotations
 
+import html
 import json
 import sqlite3
 import uuid
@@ -220,6 +221,119 @@ def load_conversation_messages(conversation_id: str) -> list[dict]:
                 "content": row["content"],
                 "meta": meta,
                 "created_at": row["created_at"],   # ← always include it
+            })
+        return result
+    finally:
+        conn.close()
+
+
+def first_question_answer(messages: list[dict]) -> tuple[Optional[dict], Optional[dict]]:
+    """
+    Return the (question, answer) pair bound to the FIRST user question in a
+    conversation. The first question is what titles a conversation, so previews
+    must reflect the answer to THAT question — not the last message in the
+    thread (a long-running thread drifts to a different topic and would make
+    every one of those cards show the identical final answer).
+    """
+    if not messages:
+        return None, None
+    first_user_idx = next(
+        (i for i, m in enumerate(messages) if m.get("role") == "user"), None
+    )
+    if first_user_idx is None:
+        return None, None
+    question = messages[first_user_idx]
+    for m in messages[first_user_idx + 1:]:
+        if m.get("role") == "assistant":
+            return question, m
+    return question, None
+
+
+def preview_snippet(text: Optional[str], limit: int = 100) -> str:
+    """
+    HTML-safe, word-boundary preview snippet shared by every card UI.
+
+    Slices to ~`limit` characters on a word boundary and appends "…" only
+    when the text was actually truncated (a short string stays verbatim).
+    HTML-escapes for injection safety but deliberately does NOT touch "$"
+    (that would render as the literal "\\$92.2M" in the History/Dashboard
+    cards).
+    """
+    if not text:
+        return ""
+    text = str(text).strip()
+    if len(text) <= limit:
+        return html.escape(text)
+    cut = limit
+    space = text.rfind(" ", 0, limit + 1)
+    if space > 0:
+        cut = space
+    return html.escape(text[:cut]) + "…"
+
+
+def list_conversations_with_messages(limit: int = 100) -> list[dict]:
+    """
+    Return conversations ordered by most recently updated, each with its
+    messages already attached, using a single indexed pass (avoids the
+    per-conversation queries the UI used to issue). Only conversations that
+    actually contain messages are returned.
+    """
+    conn = _get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM conversations c
+            WHERE EXISTS (
+                SELECT 1 FROM messages m WHERE m.conversation_id = c.id
+            )
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+        ids = [r["id"] for r in rows]
+        if not ids:
+            return []
+
+        placeholders = ",".join("?" * len(ids))
+        msg_rows = conn.execute(
+            f"""
+            SELECT conversation_id, role, content, meta_json, created_at
+            FROM messages
+            WHERE conversation_id IN ({placeholders})
+            ORDER BY created_at ASC, rowid ASC
+            """,
+            ids,
+        ).fetchall()
+
+        store: dict[str, list] = {}
+        for row in msg_rows:
+            meta = None
+            if row["meta_json"]:
+                try:
+                    meta = json.loads(row["meta_json"])
+                except (json.JSONDecodeError, TypeError):
+                    meta = None
+            store.setdefault(row["conversation_id"], []).append({
+                "role": row["role"],
+                "content": row["content"],
+                "meta": meta,
+                "created_at": row["created_at"],
+            })
+
+        result = []
+        for row in rows:
+            messages = store.get(row["id"])
+            if not messages:
+                continue
+            result.append({
+                "id": row["id"],
+                "title": row["title"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "messages": messages,
             })
         return result
     finally:

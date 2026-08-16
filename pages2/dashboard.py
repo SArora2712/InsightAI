@@ -8,12 +8,21 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from core.theme2 import apply_theme, confidence_badge_html, source_tag_html, spacer, INFO, PRIMARY,small_logo_html
-from core.history import list_conversations, load_conversation_messages
+from core.theme2 import (
+    apply_theme, confidence_badge_html, confidence_legend, source_tag_html, spacer,
+    INFO, PRIMARY, small_logo_html, empty_state,
+)
+from core.formatting import format_currency
+from core.history import (
+    list_conversations,
+    load_conversation_messages,
+    first_question_answer,
+    preview_snippet,
+)
 from agents.sql_agent.executor import execute_sql
 from core.setup import setup_resources
 
-st.set_page_config(page_title="InsightAI - Dashboard", page_icon="logo/favicon.png", layout="wide")
+st.set_page_config(page_title="InsightAI · Dashboard", page_icon="logo/favicon.svg", layout="wide")
 apply_theme()
 
 
@@ -28,37 +37,14 @@ st.title("Dashboard")
 st.caption("Northwind Traders overview")
 
 
-def empty_state(message: str):
-    """Clean premium empty state – no emojis."""
-    st.markdown(
-        f"""
-        <div style="
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            border-radius: 14px;
-            padding: 32px 20px;
-            text-align: center;
-            color: #64748B;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-top: 6px;
-        ">
-            {message}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 # Shared Plotly config (keeps the toolbar clean)
 PLOTLY_CONFIG = {
-    "displayModeBar": True,
     "displaylogo": False,
     "displayModeBar": False,
     "scrollZoom": False,
 }
 
-PLOTLY_COLORS = ["#10203D", "#B8935A", "#5A8B8C"]
+PLOTLY_COLORS = ["#10203D", "#14B8A6", "#94A3B8"]
 
 PLOTLY_LAYOUT_BASE = dict(
     margin=dict(l=10, r=10, t=12, b=10),
@@ -162,6 +148,48 @@ def confidence_label_from_score(score: float) -> str:
     return "Low"
 
 
+def build_confidence_trend_figure(df_conf) -> go.Figure:
+    """Confidence-over-time chart: teal-styled line with visible data-point
+    markers and a subtle gradient area fill. Kept as a helper so the styling
+    is unit-testable without a live dashboard session."""
+    df_conf = df_conf.copy()
+    df_conf["time"] = pd.to_datetime(df_conf["time"])
+    df_conf["smooth"] = (
+        df_conf["score"].rolling(window=3, min_periods=1, center=True).mean()
+    )
+
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=df_conf["time"],
+        y=df_conf["smooth"],
+        mode="lines+markers",
+        line=dict(color=INFO, width=2.5),
+        marker=dict(
+            size=7,
+            color=INFO,
+            line=dict(width=2, color="#FFFFFF"),
+        ),
+        fill="tozeroy",
+        fillcolor="rgba(20,184,166,0.16)",
+        hovertemplate="%{x|%b %d, %H:%M}<br>Confidence: %{y:.2f}<extra></extra>",
+        name="Trend",
+    ))
+    fig2.update_layout(
+        **PLOTLY_LAYOUT_BASE,
+        height=340,
+        xaxis=dict(showgrid=False, **AXIS_STYLE),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E7EAF1",
+            gridwidth=1,
+            range=[0, 1.08],
+            **AXIS_STYLE,
+        ),
+        showlegend=False,
+    )
+    return fig2
+
+
 # ---------------------------------------------------------------------------
 # Metrics row
 # ---------------------------------------------------------------------------
@@ -175,18 +203,32 @@ with st.spinner("Loading dashboard data..."):
     source_counts = stats["source_counts"]
     daily_counts = stats["daily_counts"]
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Total revenue", f"${revenue / 1_000_000:.1f}M", f"{order_count:,} orders")
-with col2:
+# ---------------------------------------------------------------------------
+# Business metrics
+# ---------------------------------------------------------------------------
+st.markdown("##### Business metrics")
+biz_cols = st.columns(2)
+with biz_cols[0]:
+    st.metric("Total revenue", format_currency(revenue), "")
+with biz_cols[1]:
+    st.metric("Total orders", f"{order_count:,}", "")
+spacer("lg")
+
+# ---------------------------------------------------------------------------
+# AI system health
+# ---------------------------------------------------------------------------
+st.markdown("##### AI system health")
+ai_cols = st.columns(4)
+with ai_cols[0]:
     if avg_confidence is not None:
         label = confidence_label_from_score(avg_confidence)
         st.metric("Avg confidence", f"{avg_confidence:.2f}", f"{label}, last {sample_size} queries")
     else:
         st.metric("Avg confidence", "—", "No queries yet")
-with col3:
+    st.markdown(confidence_legend(), unsafe_allow_html=True)
+with ai_cols[1]:
     st.metric("Conflicts flagged", str(conflict_count), "This session")
-with col4:
+with ai_cols[2]:
     st.metric("Documents indexed", str(chunk_count), "chunks")
 spacer("lg")
 
@@ -205,7 +247,7 @@ with row1_col1:
                 y=df["category"],
                 orientation="h",
                 marker=dict(color=INFO, line=dict(width=0)),
-                text=[f"${v/1_000_000:.1f}M" for v in df["revenue"]],
+                text=[format_currency(v) for v in df["revenue"]],
                 textposition="outside",
                 textfont=dict(size=12, color="#374151", family="Inter"),
                 cliponaxis=False,
@@ -240,35 +282,7 @@ with row1_col2:
     st.markdown("##### Confidence trend")
     if len(confidence_points) >= 2:
         df_conf = pd.DataFrame(confidence_points, columns=["time", "score"])
-        df_conf["time"] = pd.to_datetime(df_conf["time"])
-
-        # Simple 3-point moving average for a clean trend line
-        df_conf["smooth"] = df_conf["score"].rolling(window=3, min_periods=1, center=True).mean()
-
-        fig2 = go.Figure()
-
-        # Clean trend line only (no raw scatter dots)
-        fig2.add_trace(go.Scatter(
-            x=df_conf["time"],
-            y=df_conf["smooth"],
-            mode="lines",
-            line=dict(color=INFO, width=2.5),
-            hovertemplate="%{x|%b %d, %H:%M}<br>Confidence: %{y:.2f}<extra></extra>",
-            name="Trend",
-        ))
-
-        fig2.update_layout(
-            **PLOTLY_LAYOUT_BASE,
-            height=340,
-            xaxis=dict(showgrid=False, **AXIS_STYLE),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor="rgba(0,0,0,0.04)",
-                range=[0, 1.08],
-                **AXIS_STYLE,
-            ),
-            showlegend=False,
-        )
+        fig2 = build_confidence_trend_figure(df_conf)
         st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
     else:
         empty_state("Not enough saved queries yet to show a trend.")
@@ -346,18 +360,16 @@ else:
     for conv in conversations:
         try:
             messages = load_conversation_messages(conv["id"])
-            last_assistant_msg = next(
-                (m for m in reversed(messages) if m.get("role") == "assistant"), None
-            )
-            if not last_assistant_msg:
+            _question, answer_msg = first_question_answer(messages)
+            if answer_msg is None:
                 continue
 
-            meta = last_assistant_msg.get("meta") or {}
+            meta = answer_msg.get("meta") or {}
             confidence = meta.get("confidence") or {}
             label = confidence.get("label", "Medium")
             score = confidence.get("score", 0.0)
 
-            raw_content = last_assistant_msg.get("content", "")
+            raw_content = answer_msg.get("content", "")
             title = html.escape(conv.get("title", "Untitled"))
 
             # Deduplication key: title + first 120 chars of content
@@ -368,8 +380,7 @@ else:
                 continue
             seen_hashes.add(content_hash)
 
-            snippet = raw_content[:160].strip() + ("..." if len(raw_content) > 160 else "")
-            snippet_escaped = html.escape(snippet).replace("$", "\\$")
+            snippet_escaped = preview_snippet(raw_content, limit=320)
 
             sources = set()
             for step in meta.get("tool_trace", []):
@@ -402,7 +413,7 @@ else:
                             {title}
                         </div>
                         <div>
-                            {confidence_badge_html(label, score)}
+                            {confidence_badge_html(label, score)}{confidence_legend()}
                         </div>
                     </div>
                     <div style="font-size:13.5px; color:#475569; line-height:1.55; margin-bottom:10px;">

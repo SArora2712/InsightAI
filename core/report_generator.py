@@ -10,6 +10,25 @@ import time
 
 from core.llm_client import call_llm,llm_tracker
 from agents.sql_agent.executor import get_max_order_date
+from core.logging_util import get_logger
+
+logger = get_logger("core.report_generator")
+
+# Sequential pipeline stages surfaced to the Executive Report page via the same
+# StepTracker component used by Chat (core/progress.py). Kept here, next to
+# the pipeline that produces them, so the page never hard-codes the stages.
+EXECUTIVE_REPORT_STEPS = [
+    "Querying sales database",
+    "Analyzing internal reports",
+    "Gathering market context",
+    "Compiling report",
+]
+
+_NODE_STEP_MAP = {
+    "sql_agent": "Querying sales database",
+    "rag_agent": "Analyzing internal reports",
+    "web_agent": "Gathering market context",
+}
 
 # Repeated "Generate report" clicks are expensive (4 orchestrator runs + 2 LLM
 # synthesis calls). Cache the final report for a short TTL so an immediate
@@ -39,16 +58,24 @@ CRITICAL: Ground every recommendation in something explicitly stated in the find
 invent data or suggest generic business advice unconnected to what's actually shown."""
 
 
-def generate_executive_report(workflow_app, questions: list[str] = None) -> dict:
+def generate_executive_report(workflow_app, questions: list[str] = None, progress=None) -> dict:
+    """Run the full report pipeline. `progress` is an optional callback
+    receiving the next pipeline stage label (same StepTracker.advance contract
+    as Chat); when provided, workflow runs are streamed so each completed
+    agent node advances the UI's sequential indicator."""
     questions = questions or STANDARD_QUESTIONS
     cache_key = tuple(questions)
     now = time.time()
     cached = _REPORT_CACHE.get(cache_key)
     if cached is not None and now - cached[0] < _REPORT_CACHE_TTL_SECONDS:
-        print("[report_generator] Returning cached executive report.")
+        logger.debug("Returning cached executive report.")
+        if progress is not None:
+            progress("Compiling report")
         return cached[1]
 
     reference_date = get_max_order_date()
+    if progress is not None:
+        progress("Querying sales database")
 
     findings = []
     for q in questions:
@@ -58,8 +85,21 @@ def generate_executive_report(workflow_app, questions: list[str] = None) -> dict
             "web_result": None, "final_answer": None, "conflict_detected": None,
             "conflict_summary": None, "confidence": None, "critique": None,
         }
-        
-        result = workflow_app.invoke(initial_state)
+
+        if progress is None:
+            result = workflow_app.invoke(initial_state)
+        else:
+            # stream_mode="updates" yields one event per completed node, so the
+            # page can advance the sequential indicator as agents finish.
+            result = dict(initial_state)
+            for event in workflow_app.stream(initial_state, stream_mode="updates"):
+                for node_name, payload in event.items():
+                    step = _NODE_STEP_MAP.get(node_name)
+                    if step:
+                        progress(step)
+                    if isinstance(payload, dict):
+                        result.update(payload)
+
         findings.append({
             "question": q,
             "answer": result.get("final_answer") or "No answer generated.",
@@ -68,6 +108,9 @@ def generate_executive_report(workflow_app, questions: list[str] = None) -> dict
             "conflict_detected": result.get("conflict_detected", False),
             "conflict_summary": result.get("conflict_summary"),
         })
+
+    if progress is not None:
+        progress("Compiling report")
 
     findings_text = "\n\n".join(f"Q: {f['question']}\nA: {f['answer']}" for f in findings)
 

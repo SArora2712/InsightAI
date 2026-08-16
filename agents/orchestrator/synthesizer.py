@@ -10,6 +10,9 @@ import re
 
 from core.llm_client import call_llm
 from core.text_utils import ensure_prose
+from core.logging_util import get_logger
+
+logger = get_logger("agents.orchestrator.synthesizer")
 RECONCILER_SYSTEM_PROMPT = """You are a business analyst assistant combining results from multiple \
 internal tools into one answer for the user.
 
@@ -39,6 +42,10 @@ sentences is required; adding unsolicited opinions is not.
 CRITICAL: The "answer" value must be a plain sentence or short paragraph a person would read aloud - \
 never JSON, key-value pairs, code fences, or bullet-structured data. If you find yourself writing \
 curly braces or a colon-separated list inside "answer", stop and rewrite it as prose.
+
+FORMATTING RULE: Write every number and figure as plain text. NEVER wrap any number, dollar amount, \
+or metric in backticks, asterisks, or any other code/emphasis formatting - for example write \
+"$92.2M" not "`$92.2M`" or "*92.2M*". No markdown at all.
 
 CRITICAL: If conflict_detected is true, conflict_summary must never be null - always populate it \
 with one sentence naming both figures and their sources.
@@ -106,6 +113,10 @@ came from. Do not try to guess which one is "right."
 Report only what the sources actually state - do not add strategic recommendations or opinions \
 unless explicitly asked. Write in clear, natural prose sentences - never JSON, code fences, or \
 bullet-structured data.
+
+FORMATTING RULE: Write every number and figure as plain text. NEVER wrap any number, dollar amount, \
+or metric in backticks, asterisks, or any other code/emphasis formatting - for example write \
+"28.86" not "`28.86`" or "*28.86*". No markdown at all.
 
 CRITICAL: Never state a specific number, metric, category, or business term unless it appears \
 verbatim or is directly computed from the source results provided above. If a source is missing, \
@@ -220,13 +231,13 @@ def detect_conflict(rag_result: dict, sql_result: dict, web_result: dict) -> dic
 
     for source, raw_output in outputs.items():
         if raw_output is None:
-            print(f"[detect_conflict] {source} result is None")
+            logger.debug("%s result is None", source)
             continue
 
         text = str(raw_output).strip()
 
         if not text:
-            print(f"[detect_conflict] {source} result is empty")
+            logger.debug("%s result is empty", source)
             continue
 
     context = _format_available_results(rag_result, sql_result, web_result)

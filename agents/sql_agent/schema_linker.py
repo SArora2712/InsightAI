@@ -15,6 +15,9 @@ import re
 
 import numpy as np
 
+from core.logging_util import get_logger
+
+logger = get_logger("agents.sql_agent.schema_linker")
 
 from db.schema_metadata import (
     ALL_TABLES,
@@ -37,9 +40,9 @@ def _load_embedder():
         from fastembed import TextEmbedding
         _EMBEDDER = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         _EMBEDDER_TYPE = "fastembed"
-        print("[schema_linker] Using fastembed dense embeddings")
+        logger.info("Using fastembed dense embeddings")
     except Exception as e:
-        print(f"[schema_linker] fastembed unavailable ({e}), falling back to TF-IDF/SVD")
+        logger.warning("fastembed unavailable (%s), falling back to TF-IDF/SVD", e)
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.decomposition import TruncatedSVD
         _EMBEDDER = {
@@ -120,7 +123,7 @@ class SchemaLinker:
         documents = [table_to_document(t) for t in self._table_names]
         self._doc_vecs = _embed(documents)
         self._built = True
-        print(f"[schema_linker] Indexed {len(self._table_names)} tables")
+        logger.info("Indexed %s tables", len(self._table_names))
 
     def retrieve(self, question: str, top_k: int = 4, semantic_weight: float = 0.75) -> list[str]:
         if not self._built:

@@ -14,26 +14,46 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import streamlit as st
 
+from core.envutil import read_env
+from core.logging_util import get_logger
+
+logger = get_logger("core.llm_client")
+
 load_dotenv()
 
 
 class LLMCallTracker:
     """
-    Tracks LLM call volume for cost/latency visibility and as a circuit
-    breaker for Agent v2's loop, which can call the LLM an unbounded
-    number of times since it decides its own stopping point.
+    Tracks LLM call volume + tokens for cost/latency visibility and as a
+    circuit breaker for Agent v2's loop, which can call the LLM an
+    unbounded number of times since it decides its own stopping point.
     """
     def __init__(self):
         self.session_total = 0
         self.query_count = 0
+        self.query_tokens = 0
+        self.session_tokens = 0
 
     def reset_query(self):
         """Call once at the start of handling a new user query."""
         self.query_count = 0
+        self.query_tokens = 0
 
-    def record_call(self):
+    def record_call(self, tokens: int = 0):
         self.query_count += 1
         self.session_total += 1
+        if tokens:
+            self.query_tokens += tokens
+            self.session_tokens += tokens
+
+    def snapshot(self) -> dict:
+        """Point-in-time usage summary for the monitoring dashboard."""
+        return {
+            "query_count": self.query_count,
+            "session_total": self.session_total,
+            "query_tokens": self.query_tokens,
+            "session_tokens": self.session_tokens,
+        }
 
 
 llm_tracker = LLMCallTracker()
@@ -62,17 +82,25 @@ def _llm_cache_get(key: tuple) -> str | None:
     return None
 
 
+def _effective_limit() -> int:
+    """Higher call budget while generating the Executive Report."""
+    if st.session_state.get("is_generating_report"):
+        return 40
+    return MAX_LLM_CALLS_PER_QUERY
+
+
 def _can_make_llm_call() -> bool:
     """
     Prevent excessive LLM calls during a single user query.
     Allows a higher limit when generating the Executive Report.
     """
-    limit = 40 if st.session_state.get("is_generating_report") else MAX_LLM_CALLS_PER_QUERY
+    limit = _effective_limit()
 
     if llm_tracker.query_count >= limit:
-        print(
-            f"[llm_client] Maximum LLM calls per query "
-            f"({limit}) reached."
+        logger.warning(
+            "Maximum LLM calls per query (%s) reached "
+            "(query_count=%s, session_total=%s).",
+            limit, llm_tracker.query_count, llm_tracker.session_total,
         )
         return False
 
@@ -80,17 +108,17 @@ def _can_make_llm_call() -> bool:
 
 
 def _get_client():
-    api_key = os.getenv("LLM_API_KEY")
+    api_key = read_env("LLM_API_KEY")
 
     if not api_key:
         return None, None
 
-    base_url = os.getenv(
+    base_url = read_env(
         "LLM_BASE_URL",
         "https://api.groq.com/openai/v1"
     )
 
-    model = os.getenv(
+    model = read_env(
         "LLM_MODEL",
         "llama-3.1-8b-instant"
     )
@@ -161,7 +189,7 @@ def call_llm(
     cache_key = (system_prompt, user_prompt, temperature, max_tokens)
     cached_value = _llm_cache_get(cache_key)
     if cached_value is not None:
-        print("[llm_client] Returning cached LLM response (exact-match hit).")
+        logger.debug("Returning cached LLM response (exact-match hit).")
         return cached_value
 
     kwargs = {}
@@ -179,8 +207,14 @@ def call_llm(
                 ],
                 **kwargs,
             )
-            llm_tracker.record_call()
             content = response.choices[0].message.content
+            usage = getattr(response, "usage", None)
+            tokens = (usage.total_tokens if usage is not None else 0) or 0
+            llm_tracker.record_call(tokens)
+            logger.debug(
+                "LLM response model=%s tokens=%s query_calls=%s/%s",
+                model, tokens, llm_tracker.query_count, _effective_limit(),
+            )
             _LLM_CACHE[cache_key] = (time.time(), content)
             if len(_LLM_CACHE) > _LLM_CACHE_MAX_ENTRIES:
                 _LLM_CACHE.clear()
@@ -199,10 +233,10 @@ def call_llm(
                 ) from e
 
             delay = _get_retry_delay(e, attempt)
-            print(
-                f"[llm_client] Temporary API error ({type(e).__name__}). "
-                f"Retrying in {delay:.2f}s "
-                f"(attempt {attempt + 1}/{MAX_RETRIES})..."
+            logger.warning(
+                "Temporary API error (%s). Retrying in %.2fs "
+                "(attempt %s/%s)...",
+                type(e).__name__, delay, attempt + 1, MAX_RETRIES,
             )
             time.sleep(delay)
 
@@ -239,9 +273,9 @@ def call_llm_with_tools(
             return response.choices[0].message
 
         except openai.BadRequestError as e:
-            print(
-                f"[llm_client] Tool-call generation failed with "
-                f"tool_choice='{tool_choice}'. Retrying with auto: {e}"
+            logger.warning(
+                "Tool-call generation failed with tool_choice=%r. "
+                "Retrying with auto: %s", tool_choice, e,
             )
 
             firm_system_prompt = system_prompt + (
@@ -268,33 +302,31 @@ def call_llm_with_tools(
                 return response.choices[0].message
 
             except Exception as retry_error:
-                print(
-                    f"[llm_client] Tool-call retry failed: "
-                    f"{type(retry_error).__name__}: {retry_error}"
+                logger.error(
+                    "Tool-call retry failed: %s: %s",
+                    type(retry_error).__name__, retry_error,
                 )
                 return None
 
         except Exception as e:
             if not _is_retryable_error(e):
-                print(
-                    f"[llm_client] Unexpected tool-call error: "
-                    f"{type(e).__name__}: {e}"
+                logger.error(
+                    "Unexpected tool-call error: %s: %s",
+                    type(e).__name__, e,
                 )
                 return None
 
             if attempt >= MAX_RETRIES:
-                print(
-                    f"[llm_client] Tool-call failed after "
-                    f"{MAX_RETRIES} retries: {e}"
+                logger.error(
+                    "Tool-call failed after %s retries: %s", MAX_RETRIES, e,
                 )
                 return None
 
             delay = _get_retry_delay(e, attempt)
-            print(
-                f"[llm_client] Temporary tool-call API error "
-                f"({type(e).__name__}). "
-                f"Retrying in {delay:.2f}s "
-                f"(attempt {attempt + 1}/{MAX_RETRIES})..."
+            logger.warning(
+                "Temporary tool-call API error (%s). Retrying in %.2fs "
+                "(attempt %s/%s)...",
+                type(e).__name__, delay, attempt + 1, MAX_RETRIES,
             )
             time.sleep(delay)
 

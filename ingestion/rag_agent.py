@@ -3,16 +3,17 @@ Document RAG Agent — Day 5.
 
 """
 
-import os
 from typing import TypedDict, List, Optional
-
-from dotenv import load_dotenv
-load_dotenv()
 
 from ingestion.vector_store import get_client, ensure_collection, hybrid_search
 from ingestion.reranker import rerank
 from ingestion.embeddings import get_provider, EmbeddingProvider
 from ingestion.sparse import BM25Index
+from ingestion.config import CHUNK_SIZE, CHUNK_OVERLAP
+from core.llm_client import call_llm
+from core.logging_util import get_logger
+
+logger = get_logger("ingestion.rag_agent")
 
 
 # --- Retrieval ---------------------------------------------------------
@@ -80,41 +81,21 @@ Answer using only the excerpts above, with [doc_name, page N] citations for ever
 
 # --- Generation ------------------------------------------------------
 
-import time
-import openai  # add if not already imported
-
 def generate_answer(query: str, chunks: List[dict]) -> str:
-    api_key = os.getenv("LLM_API_KEY", "")
-    if not api_key:
-        return ("[No LLM_API_KEY set — skipping generation. "
-                "Retrieval + prompt construction above are already verified; "
-                "add your key to .env to see the actual generated answer.]")
+    """
+    Generate an answer using the shared LLM client (core/llm_client.py).
+    The shared client owns API-key resolution, retries, rate limiting,
+    and the per-query call budget — there is no separate OpenAI pathway
+    here anymore.
+    """
+    if not chunks:
+        return "[No relevant document excerpts were retrieved.]"
 
-    from openai import OpenAI
-    client = OpenAI(
-        base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
-        api_key=api_key,
-    )
-    model = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
     prompt = build_prompt(query, chunks)
-
-    for attempt in range(3):
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            return response.choices[0].message.content
-        except openai.RateLimitError as e:
-            if attempt < 2:
-                wait = 8 * (attempt + 1)  # 8s, then 16s
-                print(f"[rag_agent] Rate limited, waiting {wait}s before retry {attempt + 1}/2...")
-                time.sleep(wait)
-            else:
-                return "[Rate limit reached — could not generate an answer. Try again shortly.]"
+    try:
+        return call_llm(SYSTEM_PROMPT, prompt)
+    except Exception as e:
+        return f"[Could not generate an answer ({type(e).__name__}: {e}).]"
 
 # --- LangGraph node ----------------------------------------------------
 
@@ -147,7 +128,7 @@ if __name__ == "__main__":
     docs = parse_directory("data/raw")
     all_chunks = []
     for d in docs:
-        all_chunks.extend(chunk_document(d, chunk_size=120, chunk_overlap=20))
+        all_chunks.extend(chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP))
     texts = [c.text for c in all_chunks]
 
     provider = get_provider()
@@ -165,17 +146,17 @@ if __name__ == "__main__":
     app = build_document_rag_graph(bm25, provider, client)   # <- now 3 args, was 2
     
     query = "What is driving customer churn and what caused it?"
-    print(f"Query: '{query}'\n")
+    logger.info("Query: %r", query)
 
     result = app.invoke({"query": query, "retrieved_chunks": [], "answer": ""})
 
-    print(f"Retrieved {len(result['retrieved_chunks'])} chunks:")
+    logger.info("Retrieved %s chunks:", len(result["retrieved_chunks"]))
     for c in result["retrieved_chunks"]:
-        print(f"  [{c['chunk_id']}] score={c['score']:.4f}  {c['text'][:70]}...")
+        logger.info("  [%s] score=%.4f  %s...", c["chunk_id"], c["score"], c["text"][:70])
 
-    print(f"\n--- Constructed prompt (what gets sent to the LLM) ---")
-    print(build_prompt(query, result["retrieved_chunks"])[:600] + "...\n")
+    logger.info("--- Constructed prompt (what gets sent to the LLM) ---")
+    logger.info("%s...", build_prompt(query, result["retrieved_chunks"])[:600])
 
-    print(f"--- Answer ---")
-    print(result["answer"])
+    logger.info("--- Answer ---")
+    logger.info("%s", result["answer"])
     client.close()

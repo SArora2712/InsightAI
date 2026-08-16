@@ -21,6 +21,9 @@ from agents.orchestrator.confidence import compute_confidence
 from agents.orchestrator.critique import critique_answer
 from core.text_utils import ensure_prose
 from core.llm_client import llm_tracker
+from core.logging_util import get_logger
+
+logger = get_logger("agents.orchestrator.graph")
 
 class OrchestratorState(TypedDict):
     query: str
@@ -39,9 +42,12 @@ def router_node(state: OrchestratorState) -> OrchestratorState:
     try:
         agents_needed = route_question(state["query"])
     except Exception as e:
-        print(f"[orchestrator] Router failed ({type(e).__name__}), defaulting to all agents: {e}")
+        logger.error(
+            "Router failed (%s), defaulting to all agents: %s",
+            type(e).__name__, e,
+        )
         agents_needed = list(VALID_AGENTS)
-    print(f"[orchestrator] Routing to: {agents_needed}")
+    logger.info("Routing to: %s", agents_needed)
     return {"agents_needed": agents_needed}
 
 
@@ -131,7 +137,7 @@ def build_orchestrator_graph(bm25,provider, qdrant_client):
             rag_output = rag_subgraph.invoke({"query": state["query"], "retrieved_chunks": [], "answer": ""})
             return {"rag_result": rag_output}
         except Exception as e:
-            print(f"[orchestrator] Document RAG failed ({type(e).__name__}): {e}")
+            logger.error("Document RAG failed (%s): %s", type(e).__name__, e)
             return {"rag_result": {"answer": "", "error": str(e)}}
 
 
@@ -139,7 +145,7 @@ def build_orchestrator_graph(bm25,provider, qdrant_client):
         try:
             return sql_agent_node(state)
         except Exception as e:
-            print(f"[orchestrator] SQL agent failed ({type(e).__name__}): {e}")
+            logger.error("SQL agent failed (%s): %s", type(e).__name__, e)
             return {"sql_result": {"question": state["query"], "rows": [], "columns": [],
                                    "row_count": 0, "error": str(e)}}
 
@@ -148,7 +154,7 @@ def build_orchestrator_graph(bm25,provider, qdrant_client):
         try:
             return web_agent_node(state)
         except Exception as e:
-            print(f"[orchestrator] Web agent failed ({type(e).__name__}): {e}")
+            logger.error("Web agent failed (%s): %s", type(e).__name__, e)
             return {"web_result": {"answer": "", "error": str(e)}}
 
 

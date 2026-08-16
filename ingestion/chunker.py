@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     docs = parse_directory("data/raw")
     for d in docs:
-        chunks = chunk_document(d, chunk_size=120, chunk_overlap=20)
+        chunks = chunk_document(d, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
         print(f"\n=== {d.doc_name}: {len(chunks)} chunks ===")
         for i, c in enumerate(chunks):
             print(f"  [{c.chunk_id}] ({c.token_count} tok) {c.text[:90]}...")

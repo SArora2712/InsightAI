@@ -5,12 +5,18 @@ import html
 
 import streamlit as st
 
-from core.theme2 import apply_theme, confidence_badge_html, spacer
+from core.theme2 import apply_theme, confidence_badge_html, spacer, small_logo_html
 from core.setup import setup_resources
-from core.report_generator import generate_executive_report
+from core.progress import StepTracker
+from core.report_generator import (
+    generate_executive_report,
+    EXECUTIVE_REPORT_STEPS,
+)
+from core.text_utils import strip_inline_code, clean_prose
 
-st.set_page_config(page_title="InsightAI - Executive Report", page_icon="logo/favicon.png", layout="wide")
+st.set_page_config(page_title="InsightAI · Executive Report", page_icon="logo/favicon.svg", layout="wide")
 apply_theme()
+st.markdown(small_logo_html(), unsafe_allow_html=True)
 
 try:
     workflow_app, _, _ = setup_resources()
@@ -21,6 +27,13 @@ except Exception as e:
 
 st.title("Executive report")
 st.caption("Cross-source analysis for leadership")
+
+st.markdown(
+    "Generates a leadership brief from three sources — your sales database, "
+    "internal business reports, and current market context. InsightAI answers "
+    "a fixed set of strategic questions, then compiles an executive summary, "
+    "key findings with confidence scores, and recommendations."
+)
 
 if "executive_report" not in st.session_state:
     st.session_state.executive_report = None
@@ -34,10 +47,39 @@ with col_gen:
         use_container_width=True,
         icon=":material/auto_awesome:"
     )
+with col_info:
+    regen_hint = st.session_state.executive_report is not None
+    st.markdown(
+        (
+            'Last generated: <b>not yet</b> — click Generate report to create '
+            "your first brief."
+            if not regen_hint
+            else f"Click Generate report again to refresh this brief."
+        ),
+        unsafe_allow_html=True,
+    )
 
 if generate_clicked:
-    with st.spinner("Running analysis across all data sources..."):
-        st.session_state.executive_report = generate_executive_report(workflow_app)
+    with st.status("Running the report pipeline…", expanded=False) as status:
+        status.update(label="Running the report pipeline…", state="running")
+        tracker = StepTracker(steps=EXECUTIVE_REPORT_STEPS)
+
+        def progress(step_label):
+            tracker.advance(step_label)
+            status.update(label=f"{tracker.active}…", state="running")
+
+        try:
+            st.session_state.executive_report = generate_executive_report(
+                workflow_app, progress=progress
+            )
+        except Exception as exc:
+            st.session_state.executive_report = None
+            tracker.complete()
+            st.error(f"Report generation failed: {exc}")
+            status.update(label="Report generation failed", state="error")
+        else:
+            tracker.complete()
+            status.update(label="Report complete", state="complete")
 
 report = st.session_state.executive_report
 
@@ -58,7 +100,7 @@ spacer("md")
 
 # ===== Executive Summary =====
 st.markdown("##### Executive summary")
-summary = html.escape(report["summary"] or "").replace("$", r"\$")
+summary = html.escape(strip_inline_code(report["summary"] or ""))
 
 st.markdown(
     f"""
@@ -87,46 +129,29 @@ st.markdown("##### Key findings")
 for f in report["findings"]:
     label = f["confidence"].get("label")
     score = f["confidence"].get("score", 0)
+    question = f["question"]
 
-    st.markdown(
-        f"""
-        <div style="
-            background: #FFFFFF;
-            border: 1px solid #E8EAEE;
-            border-left: 4px solid #10203D;
-            border-radius: 14px;
-            padding: 16px 18px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            margin-bottom: 14px;
-        ">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
-                <div style="font-weight:600; font-size:15px; color:#0F172A; line-height:1.4;">
-                    {f["question"]}
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Badge + answer (using Streamlit for interactivity)
-    col_badge, _ = st.columns([1, 5])
-    with col_badge:
-        if label:
-            st.markdown(confidence_badge_html(label, score), unsafe_allow_html=True)
-
-    answer=f["answer"].replace("$", "\\$")
-    st.markdown(answer)
-
-    if f.get("conflict_detected"):
-        st.warning(
-            f"**Conflicting data:** {f.get('conflict_summary') or 'Sources disagree on this point.'}"
+    with st.container(border=True):
+        head_l, head_r = st.columns(
+            [4.45, 1], gap="small", vertical_alignment="center"
         )
+        with head_l:
+            st.markdown(f"**{question}**")
+        with head_r:
+            if label:
+                st.markdown(confidence_badge_html(label, score), unsafe_allow_html=True)
 
-    if f.get("critique", {}).get("has_issues"):
-        severity = f["critique"].get("severity", "unknown")
-        with st.expander(f"Critique · {severity} severity"):
-            st.markdown(f["critique"].get("verdict", "No details available."))
+        st.markdown(clean_prose(f["answer"]))
+
+        if f.get("conflict_detected"):
+            st.warning(
+                f"**Conflicting data:** {f.get('conflict_summary') or 'Sources disagree on this point.'}"
+            )
+
+        if f.get("critique", {}).get("has_issues"):
+            severity = f["critique"].get("severity", "unknown")
+            with st.expander(f"Critique · {severity} severity"):
+                st.markdown(f["critique"].get("verdict", "No details available."))
 
     spacer("sm")
 
@@ -136,7 +161,7 @@ spacer("lg")
 st.markdown("##### Recommendations")
 
 # Split recommendations into numbered items if possible
-recs = html.escape(report["recommendations"] or "").replace("$", r"\$")
+recs = html.escape(strip_inline_code(report["recommendations"] or ""))
 
 st.markdown(
     f"""

@@ -4,8 +4,10 @@ InsightAI - SQL Agent core: schema-linking -> NL->SQL generation -> validation
 """
 import re
 
-
 from core.llm_client import call_llm
+from core.logging_util import get_logger
+
+logger = get_logger("agents.sql_agent.generator")
 
 from agents.sql_agent.schema_linker import SchemaLinker
 from agents.sql_agent.validator import validate_sql, SQLValidationError
@@ -44,7 +46,7 @@ def run_sql_agent(question: str) -> dict:
     global _reference_date
     if _reference_date is None:
         _reference_date = get_max_order_date()
-        print(f"[sql_agent] Dataset reference date (effective 'now'): {_reference_date}")
+        logger.info("Dataset reference date (effective 'now'): %s", _reference_date)
 
     system_prompt = build_sql_system_prompt(_reference_date)   # <- was the SQL_SYSTEM_PROMPT constant
 

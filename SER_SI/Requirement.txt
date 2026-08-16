@@ -1,0 +1,12 @@
+pandas
+librosa
+matplotlib
+seaborn
+SpeechRecognition
+xgboost
+numpy
+torch
+transformer
+unicorn flask
+node
+pydub

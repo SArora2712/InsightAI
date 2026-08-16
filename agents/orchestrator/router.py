@@ -17,6 +17,9 @@ import json
 import re
 
 from core.llm_client import call_llm
+from core.logging_util import get_logger
+
+logger = get_logger("agents.orchestrator.router")
 
 
 VALID_AGENTS = {
@@ -226,11 +229,10 @@ def _parse_agent_list(raw_output: str) -> list[str]:
 
     except (json.JSONDecodeError, ValueError, TypeError):
 
-        print(
-            "[router] WARNING: Invalid LLM routing output. "
-            "Falling back to all agents."
+        logger.warning(
+            "Invalid LLM routing output. Falling back to all agents: %r",
+            raw_output,
         )
-        print(f"[router] Raw output: {raw_output!r}")
 
         # Fail-open fallback for malformed router output.
         # This is different from a legitimate [] response.
@@ -254,16 +256,15 @@ def route_question(question: str) -> list[str]:
     try:
         raw_output = call_llm(ROUTER_SYSTEM_PROMPT, question)
     except Exception as e:
-        print(
-            f"[router] ERROR: LLM router call failed ({type(e).__name__}: {e}). "
-            "Falling back to all agents."
+        logger.error(
+            "LLM router call failed (%s: %s). Falling back to all agents.",
+            type(e).__name__, e,
         )
         return list(VALID_AGENTS)
-    print(f"[router] DEBUG raw_output: {raw_output!r}")
+    logger.debug("Router raw_output: %r", raw_output)
     if raw_output is None:
-        print(
-            "[router] WARNING: LLM returned None. "
-            "Falling back to all agents."
+        logger.warning(
+            "LLM returned None. Falling back to all agents."
         )
         return list(VALID_AGENTS)
 
@@ -271,9 +272,8 @@ def route_question(question: str) -> list[str]:
         raw_output.startswith("[No")
         and "API_KEY" in raw_output
     ):
-        print(
-            "[router] WARNING: No LLM API key available. "
-            "Falling back to all agents for testability."
+        logger.warning(
+            "No LLM API key available. Falling back to all agents for testability."
         )
         return list(VALID_AGENTS)
 
