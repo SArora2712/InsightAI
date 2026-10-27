@@ -383,3 +383,7 @@ def get_conversation(conversation_id: str) -> Optional[dict]:
         return dict(row) if row else None
     finally:
         conn.close()
+
+# Ensure the SQLite file and tables exist on first import (fresh clones, CI, new deployments).
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+init_db()
