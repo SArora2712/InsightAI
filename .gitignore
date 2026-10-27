@@ -3,4 +3,5 @@ venv/
 data/qdrant_local/
 data/bm25_index.json
 __pycache__/
-*.pyc
+*.pycdata/history.db
+*.db-journal
