@@ -1,7 +1,16 @@
+# Python virtual environments
+.venv/
 venv/
+
+# Environment variables and secrets
 .env
+
+# Local vector database and search index
 data/qdrant_local/
 data/bm25_index.json
-__pycache__/
-*.pycdata/history.db
+data/history.db
 *.db-journal
+
+# Python cache files
+__pycache__/
+*.pyc
