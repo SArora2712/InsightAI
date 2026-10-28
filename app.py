@@ -16,7 +16,7 @@ from core.landing import (
 
 st.set_page_config(
     page_title="InsightAI · Insights Chat",
-    page_icon="logo/favicon.svg",
+    page_icon=str(Path(__file__).parent / "logo" / "favicon.png"),
     layout="wide",
     initial_sidebar_state="expanded"
 )
