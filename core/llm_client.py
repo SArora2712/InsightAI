@@ -56,7 +56,43 @@ class LLMCallTracker:
         }
 
 
-llm_tracker = LLMCallTracker()
+import threading
+from contextvars import ContextVar
+
+_trackers: dict = {}
+_trackers_lock = threading.Lock()
+_tracker_key: ContextVar[str] = ContextVar("llm_tracker_key", default="default")
+
+
+def _current_tracker_key() -> str:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        ctx = get_script_run_ctx()
+        if ctx is not None:
+            return ctx.session_id
+    except Exception:
+        pass
+    return _tracker_key.get()
+
+
+class _PerSessionTracker:
+    """Gives each Streamlit session its own LLMCallTracker."""
+
+    def _get(self):
+        key = _current_tracker_key()
+        with _trackers_lock:
+            tracker = _trackers.get(key)
+            if tracker is None:
+                if len(_trackers) > 500:
+                    _trackers.clear()
+                tracker = _trackers[key] = LLMCallTracker()
+            return tracker
+
+    def __getattr__(self, name):
+        return getattr(self._get(), name)
+
+
+llm_tracker = _PerSessionTracker()
 MAX_LLM_CALLS_PER_QUERY = 15
 MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 2.0
