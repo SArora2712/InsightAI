@@ -1,6 +1,7 @@
 # InsightAI
-[![CI](https://github.com/SArora2712/InsightAI/actions/workflows/ci.yml/badge.svg)](https://github.com/SArora2712/InsightAI/actions)
----
+
+[![CI](https://github.com/SArora2712/InsightAI/actions/workflows/ci.yml/badge.svg)](https://github.com/SArora2712/InsightAI/actions) · **[Live demo](https://insightai-businessanalytics.streamlit.app)**
+
 **Business Analytics Copilot** — a multi-source AI assistant for Northwind
 Traders that routes every question across **structured sales data (SQL)**,
 **internal reports (Document RAG)**, and **live web context**, then explains
@@ -28,7 +29,6 @@ autonomous agent loop.
 ---
 
 ## Architecture
-
 ```mermaid
 flowchart LR
     U[User question] --> R[Router: 1 LLM call]
@@ -114,7 +114,7 @@ uvicorn api.main:app --reload
 ---
 
 ## Tests
-
+**166 tests passing** (offline unit suite). Integration tests in `eval/` run when an LLM API key is set.
 ```bash
 pytest                        # fast, offline unit suite
 pytest -m integration         # needs the real index + optional LLM key
@@ -126,24 +126,11 @@ pytest -m integration         # needs the real index + optional LLM key
 - **Integration** (`eval/`): builds the real index and exercises the full graph,
   RAG retrieval, and the Agent v2 loop.
 
-CI runs the unit suite on every push/PR (`pytest -m "not integration"`); the
+CI runs the unit suite on every push/PR (`  Select-String -Path .github\workflows\ci.yml -Pattern "pytest"`); the
 integration job runs on manual dispatch. See `.github/workflows/ci.yml`.
 
 ---
 
-## Benchmarks (representative)
-
-| Scenario | Metric | Result |
-|---|---|---|
-| Total revenue by category (SQL) | latency (SQL exec) | ~ms |
-| Internal-report question (RAG, hybrid) | retrieval time | ~instant |
-| Multi-source conflict query | confidence scoring | deterministic |
-| Out-of-scope question | agents invoked | `[]` → single reply |
-
-> Exact numbers are environment-dependent (embedding model download, Qdrant
-> local, LLM latency). Rerun `pytest -m integration` locally for yours.
-
----
 
 ## Security notes
 
