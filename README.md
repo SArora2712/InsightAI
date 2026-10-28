@@ -1,5 +1,6 @@
 # InsightAI
 [![CI](https://github.com/SArora2712/InsightAI/actions/workflows/ci.yml/badge.svg)](https://github.com/SArora2712/InsightAI/actions)
+---
 **Business Analytics Copilot** — a multi-source AI assistant for Northwind
 Traders that routes every question across **structured sales data (SQL)**,
 **internal reports (Document RAG)**, and **live web context**, then explains
