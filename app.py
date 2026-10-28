@@ -4,6 +4,7 @@ chat.py and pages/*.py - nothing else should execute in this file.
 """
 import streamlit as st
 from core.theme2 import apply_theme
+from anyio import Path
 from core.auth import is_authenticated, is_admin, logout
 from core.landing import (
     current_view,
